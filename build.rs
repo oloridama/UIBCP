@@ -74,7 +74,7 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
     
     // Enable optional support
-    config.enable_type_names();
+    //config.enable_type_names();
     
     // Set output directory
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
@@ -113,9 +113,9 @@ fn generate_helper_code(out_dir: &Path, proto_files: &[&str]) -> Result<()> {
     
     // Define IbcMessage trait
     writeln!(file, r#"
-pub trait IbcMessage {
+pub trait IbcMessage {{
     fn canonical_encode(&self) -> Vec<u8>;
-}
+}}
 "#)?;
     
     // Implement IbcMessage for relevant messages
@@ -133,19 +133,19 @@ pub trait IbcMessage {
     
     // Re-export generated modules
     writeln!(file, r#"
-pub mod uibc {
-    pub mod v1 {
+pub mod uibc {{
+    pub mod v1 {{
         include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
-    }
-    pub mod ibc {
-        pub mod v1 {
+    }}
+    pub mod ibc {{
+        pub mod v1 {{
             include!(concat!(env!("OUT_DIR"), "/uibc.ibc.v1.rs"));
-        }
-        pub mod extensions {
+        }}
+        pub mod extensions {{
             include!(concat!(env!("OUT_DIR"), "/uibc.ibc.extensions.rs"));
-        }
-    }
-}
+        }}
+    }}
+}}
 "#)?;
 
     Ok(())
