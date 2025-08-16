@@ -28,7 +28,7 @@ jobs:
         run: cargo run --release --bin export_poseidon > poseidon_constants.txt
 
       - name: Upload constants
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: poseidon-constants
           path: poseidon_constants.txt
