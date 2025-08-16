@@ -1,0 +1,430 @@
+syntax = "proto3";
+
+package uibc.v1;
+
+import "uibc/v1/proof.proto";
+import "uibc/ibc/v1/compatibility.proto";
+
+// The UniversalMessage is the core message format for the UIBC Protocol.
+// It is designed to be chain-agnostic and extensible.
+message UniversalMessage {
+  // Protocol Metadata
+  uint32 version = 1;
+  bytes message_id = 2;      // Unique identifier across all chains (e.g., hash of tx, log index)
+  uint64 created_at = 3;     // Unix timestamp when message was created
+
+  // Routing Information
+  ChainEndpoint source = 4;
+  ChainEndpoint destination = 5;
+  repeated string route_hints = 6; // Suggested routing path (e.g., "chain-1", "chain-2")
+
+  // Message Content
+  MessageType message_type = 7;
+  oneof payload {
+    TokenTransfer token_transfer = 10;
+    ContractCall contract_call = 11;
+    StateQuery state_query = 12;
+    Acknowledgment acknowledgment = 13;
+    Error error = 14;
+    BatchTransfer batch_transfer = 15; // NEW: For batch operations to reduce costs
+  }
+
+  // Timeouts (IBC-compatible)
+  // Use a oneof to ensure only one timeout type can be specified.
+  oneof timeout {
+    ibc.v1.Height timeout_height = 20; // Absolute height timeout
+    uint64 timeout_timestamp = 21;     // Unix timestamp timeout
+  }
+
+  // Verification Requirements
+  ProofRequirement proof_requirement = 22;
+  StateCheckpoint state_checkpoint = 23; // Chain state when message was created
+
+  // NEW: Economic Fields (Complete fee structure)
+  MessageFees fees = 30; // Fee structure for this specific message
+  RelayerAssignment relayer_assignment = 31;
+  EconomicParameters economic_parameters = 32;
+
+  // IBC Compatibility Extensions
+  ibc.v1.IbcCompatibilityData ibc_data = 40;
+}
+
+// COMPLETED: Missing MessageFees definition
+message MessageFees {
+  Fee base_fee = 1;           // Basic relayer operational cost
+  Fee complexity_fee = 2;     // Based on message size/complexity  
+  Fee verification_fee = 3;   // Proof verification cost
+  Fee destination_fee = 4;    // Destination chain specific costs
+  Fee priority_fee = 5;       // For priority processing (optional)
+  Fee timeout_insurance = 6;  // Insurance for timeout handling (optional)
+  Fee total_fee = 7;         // Sum of all fees above
+  
+  // NEW: Fee distribution breakdown for relayer economics
+  FeeDistribution distribution = 8;
+}
+
+// NEW: Fee distribution model for sustainable economics
+message FeeDistribution {
+  uint32 relayer_share_bps = 1;    // Basis points (e.g., 5000 = 50%)
+  uint32 protocol_share_bps = 2;   // Protocol treasury share
+  uint32 verifier_share_bps = 3;   // Proof verifier rewards
+  uint32 validator_share_bps = 4;  // Validator/sequencer rewards (if applicable)
+  
+  // NEW: Performance bonuses to incentivize good relayer behavior
+  repeated PerformanceBonus bonuses = 5;
+}
+
+// NEW: Performance-based incentives
+message PerformanceBonus {
+  PerformanceMetric metric = 1;
+  uint32 threshold_bps = 2;        // Threshold in basis points (e.g., 9500 = 95%)
+  uint32 bonus_percentage = 3;     // Bonus percentage (e.g., 20 = 20% extra)
+}
+
+enum PerformanceMetric {
+  PERFORMANCE_METRIC_UNSPECIFIED = 0;
+  PERFORMANCE_METRIC_SUCCESS_RATE = 1;      // % of successful deliveries
+  PERFORMANCE_METRIC_LATENCY = 2;           // Average delivery time
+  PERFORMANCE_METRIC_UPTIME = 3;            // Relayer availability %
+  PERFORMANCE_METRIC_VOLUME = 4;            // Total value processed
+}
+
+// ENHANCED: ChainEndpoint with type information for better routing
+message ChainEndpoint {
+  string chain_id = 1;
+  ChainType chain_type = 2;        // NEW: Chain categorization for routing optimization
+  
+  // IBC-specific fields (optional)
+  string connection_id = 3;        // IBC connection (if applicable)
+  string channel_id = 4;           // IBC channel (if applicable)  
+  string port_id = 5;              // IBC port (if applicable)
+  
+  // EVM-specific fields (optional)
+  bytes contract_address = 6;      // Smart contract address (20-byte for EVM)
+  uint64 evm_chain_id = 7;         // EIP-155 chain ID
+  
+  // NEW: Solana-specific fields for future expansion
+  bytes program_id = 8;            // Solana program ID (32-byte)
+  string account_address = 9;      // Solana account address
+  
+  // NEW: UTXO-specific fields for Bitcoin-like chains
+  string script_hash = 10;         // Bitcoin/UTXO script hash
+  
+  // NEW: Chain-specific metadata for optimization
+  ChainMetadata metadata = 15;
+}
+
+// NEW: Chain type enum for routing decisions
+enum ChainType {
+  CHAIN_TYPE_UNSPECIFIED = 0;
+  CHAIN_TYPE_TENDERMINT = 1;       // Cosmos SDK chains
+  CHAIN_TYPE_EVM = 2;              // Ethereum, Polygon, BSC, etc.
+  CHAIN_TYPE_SOLANA = 3;           // Solana ecosystem
+  CHAIN_TYPE_UTXO = 4;             // Bitcoin, Bitcoin Cash, etc.
+  CHAIN_TYPE_POLKADOT = 5;         // Polkadot parachains
+  CHAIN_TYPE_NEAR = 6;             // NEAR Protocol
+  CHAIN_TYPE_APTOS = 7;            // Aptos/Move-based chains
+}
+
+// NEW: Chain metadata for better fee calculation and routing
+message ChainMetadata {
+  uint64 average_block_time_ms = 1;    // Average block time in milliseconds
+  uint64 finality_confirmations = 2;   // Blocks needed for finality
+  repeated string supported_tokens = 3; // Native token denominations
+  Fee base_gas_price = 4;              // Current base gas price
+  float congestion_multiplier = 5;      // Current network congestion (1.0 = normal)
+}
+
+// Defines core types for V1
+message MessageId {
+  bytes id = 1; // 32-byte hash of (source_chain_id + tx_hash + log_index)
+}
+
+message StateCheckpoint {
+  uint64 height = 1;
+  bytes block_hash = 2; // 32-byte hash
+  bytes state_root = 3; // 32-byte hash
+  uint64 timestamp = 4;
+  bytes validator_set_hash = 5; // NEW: Hash of validator set at this height (optional, for light client updates)
+}
+
+// Message Content Definitions
+enum MessageType {
+  // Unspecified type, should not be used
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  // Maps to IBC token transfer
+  MESSAGE_TYPE_TOKEN_TRANSFER = 1;
+  // Maps to IBC app data/contract call
+  MESSAGE_TYPE_CONTRACT_CALL = 2;
+  // Maps to a state query/proof request
+  MESSAGE_TYPE_STATE_QUERY = 3;
+  // Acknowledgment of a received message
+  MESSAGE_TYPE_ACKNOWLEDGMENT = 4;
+  // Error/timeout notification
+  MESSAGE_TYPE_ERROR = 5;
+  // NEW: Batch operations for efficiency
+  MESSAGE_TYPE_BATCH_TRANSFER = 6;
+  // NEW: For light client updates
+  MESSAGE_TYPE_VALIDATOR_UPDATE = 7;
+  // NEW: For opening new channels
+  MESSAGE_TYPE_CHANNEL_HANDSHAKE = 8;
+}
+
+// ENHANCED: TokenTransfer with string amounts for large numbers (DeFi compatibility)
+message TokenTransfer {
+  string denom = 1;         // Token denomination (e.g., "uatom", "ibc/ABC123...")
+  string amount = 2;        // Amount as string for arbitrary precision (handles DeFi amounts)
+  string sender = 3;        // Sender address (chain-specific format)
+  string receiver = 4;      // Receiver address (chain-specific format)
+  string memo = 5;          // Optional memo/data
+  
+  // NEW: Additional transfer metadata for complex transfers
+  TransferMetadata metadata = 6;
+}
+
+// NEW: Transfer metadata for IBC tracing and bridge fees
+message TransferMetadata {
+  bool is_ibc_token = 1;           // True if this is an IBC-wrapped token
+  repeated string trace_path = 2;   // IBC trace path (e.g., ["transfer", "channel-0"])
+  string original_denom = 3;        // Original denomination before IBC wrapping
+  Fee bridge_fee = 4;              // Additional bridge fee (if applicable)
+}
+
+// NEW: Batch transfer for efficiency and cost reduction
+message BatchTransfer {
+  repeated TokenTransfer transfers = 1;
+  bool atomic_execution = 2;        // All transfers succeed or all fail
+  string batch_memo = 3;            // Memo for the entire batch
+  uint64 max_batch_timeout = 4;     // Maximum time to complete all transfers
+}
+
+// ENHANCED: ContractCall with metadata for complex operations
+message ContractCall {
+  bytes target_contract = 1; // Contract to call on destination (e.g., 20-byte EVM address)
+  bytes function_selector = 2; // Function signature hash (4-byte)
+  bytes call_data = 3;       // ABI-encoded call data
+  string value = 4;          // Native token value to send (string for precision)
+  
+  // NEW: Enhanced contract call metadata
+  ContractCallMetadata metadata = 5;
+}
+
+// NEW: Contract call metadata for permissions and optimization
+message ContractCallMetadata {
+  uint64 gas_limit = 1;             // Gas limit for execution
+  string contract_standard = 2;     // "ERC20", "ERC721", "CW20", etc.
+  repeated string required_permissions = 3; // Required permissions/capabilities
+  uint32 call_priority = 4;         // Priority for execution ordering
+  bytes access_list = 5;            // EIP-2930 access list (for EVM)
+}
+
+// ENHANCED: StateQuery with metadata
+message StateQuery {
+  bytes storage_key = 1;   // Key to query in destination chain state
+  ProofType proof_type = 2; // What kind of proof is needed
+  
+  // NEW: Query metadata for optimization
+  StateQueryMetadata metadata = 3;
+}
+
+// NEW: State query metadata for specific queries
+message StateQueryMetadata {
+  string storage_type = 1;          // "account", "contract", "validator", etc.
+  uint64 query_height = 2;          // Specific height to query (0 = latest)
+  bool include_proof = 3;           // Whether to include merkle proof
+}
+
+// ENHANCED: Acknowledgment with metadata
+message Acknowledgment {
+  bytes original_message_id = 1; // 32-byte hash
+  bool success = 2;
+  bytes result_data = 3; // Execution result if successful
+  uint32 error_code = 4;
+  string error_message = 5;
+  
+  // NEW: Acknowledgment metadata for analytics
+  AckMetadata metadata = 6;
+}
+
+// NEW: Acknowledgment metadata for performance tracking
+message AckMetadata {
+  uint64 processed_at = 1;          // When the original message was processed
+  uint64 gas_used = 2;              // Gas consumed during processing
+  Fee actual_fee = 3;               // Actual fee charged
+  bytes relayer_address = 4;        // Address of relayer who processed the message
+}
+
+// ENHANCED: Error with context for debugging
+message Error {
+  bytes original_message_id = 1; // 32-byte hash
+  ErrorType error_type = 2;
+  string description = 3;
+  
+  // NEW: Error context for better debugging
+  ErrorContext context = 4;
+}
+
+// NEW: Error context for debugging and retry logic
+message ErrorContext {
+  uint64 failed_at_height = 1;      // Height where error occurred
+  string failed_at_chain = 2;       // Chain where error occurred
+  bytes failed_step = 3;            // Which processing step failed
+  bool retryable = 4;               // Whether this error is retryable
+}
+
+enum ProofType {
+  PROOF_TYPE_UNSPECIFIED = 0;
+  PROOF_TYPE_MERKLE_INCLUSION = 1;
+  PROOF_TYPE_MERKLE_EXCLUSION = 2;
+  PROOF_TYPE_STATE_TRANSITION = 3;
+  PROOF_TYPE_EXECUTION_RESULT = 4;
+  PROOF_TYPE_VALIDATOR_SET = 5;      // NEW: For validator set changes
+  PROOF_TYPE_CONSENSUS = 6;          // NEW: For consensus-related proofs
+}
+
+enum ErrorType {
+  ERROR_TYPE_UNSPECIFIED = 0;
+  ERROR_TYPE_TIMEOUT = 1;
+  ERROR_TYPE_INVALID_DESTINATION = 2;
+  ERROR_TYPE_INSUFFICIENT_FEES = 3;
+  ERROR_TYPE_EXECUTION_FAILED = 4;
+  ERROR_TYPE_PROOF_VERIFICATION_FAILED = 5;
+  ERROR_TYPE_UNSUPPORTED_MESSAGE_TYPE = 6;
+  ERROR_TYPE_INSUFFICIENT_BALANCE = 7;    // NEW: Sender lacks funds
+  ERROR_TYPE_CONTRACT_NOT_FOUND = 8;      // NEW: Target contract doesn't exist
+  ERROR_TYPE_SLASHING_CONDITION_MET = 9;  // NEW: Relayer slashing triggered
+  ERROR_TYPE_CHANNEL_CLOSED = 10;         // NEW: IBC channel is closed
+  ERROR_TYPE_RATE_LIMITED = 11;           // NEW: Too many messages from sender
+}
+
+// Relayer Economics & Assignment
+message RelayerAssignment {
+  bytes assigned_relayer = 1; // Pre-assigned relayer (optional, 20-byte EVM address)
+  uint64 assignment_deadline = 2; // When assignment expires
+  repeated bytes backup_relayers = 3; // Fallback relayers
+  bool competitive_mode = 4; // Allow multiple relayers to compete
+  
+  // NEW: Assignment metadata for complex routing
+  RelayerBond required_bond = 5;    // Bonding requirements
+  RelayerSelection selection_criteria = 6; // How relayer was selected
+}
+
+// NEW: Relayer bonding system for security
+message RelayerBond {
+  Fee minimum_bond = 1;             // Base bond requirement
+  float value_multiplier = 2;       // Additional bond based on message value (e.g., 0.1 = 10%)
+  uint64 lock_period_seconds = 3;   // How long bond is locked after message
+  repeated SlashingCondition slashing_conditions = 4;
+}
+
+// NEW: Slashing conditions to prevent malicious behavior
+message SlashingCondition {
+  SlashingOffense offense = 1;
+  uint32 slash_percentage = 2;      // Percentage of bond to slash (basis points)
+  bytes evidence_required = 3;      // What evidence is needed for slashing
+}
+
+enum SlashingOffense {
+  SLASHING_OFFENSE_UNSPECIFIED = 0;
+  SLASHING_OFFENSE_INVALID_PROOF = 1;
+  SLASHING_OFFENSE_MESSAGE_REPLAY = 2;
+  SLASHING_OFFENSE_TIMEOUT_FRAUD = 3;
+  SLASHING_OFFENSE_MALICIOUS_ROUTING = 4;
+  SLASHING_OFFENSE_UNAVAILABILITY = 5;    // NEW: Relayer went offline
+  SLASHING_OFFENSE_DOUBLE_SPENDING = 6;   // NEW: Attempted double-spend
+}
+
+// NEW: Relayer selection mechanism
+message RelayerSelection {
+  SelectionMethod method = 1;
+  bytes selection_proof = 2;        // Proof of selection process (e.g., VRF)
+  uint64 selected_at = 3;           // When selection occurred
+}
+
+enum SelectionMethod {
+  SELECTION_METHOD_UNSPECIFIED = 0;
+  SELECTION_METHOD_ROUND_ROBIN = 1;
+  SELECTION_METHOD_LOWEST_FEE = 2;
+  SELECTION_METHOD_HIGHEST_STAKE = 3;
+  SELECTION_METHOD_REPUTATION_BASED = 4;
+  SELECTION_METHOD_RANDOM_VRF = 5;        // Verifiable Random Function
+  SELECTION_METHOD_USER_SPECIFIED = 6;    // User chose specific relayer
+}
+
+message EconomicParameters {
+  Fee estimated_value = 1;
+  Priority priority = 2;
+  Fee max_total_fee = 3;
+  FeePayment fee_payment = 4;
+  Fee timeout_compensation = 5;
+  
+  // NEW: Advanced economic parameters for complex scenarios
+  IncentiveParameters incentives = 6;
+}
+
+// NEW: Incentive parameters for user loyalty and volume discounts
+message IncentiveParameters {
+  Fee early_completion_bonus = 1;   // Bonus for completing before deadline
+  Fee volume_discount = 2;          // Discount for high-volume users
+  string loyalty_program_id = 3;    // Loyalty program membership
+  repeated string referral_codes = 4; // Referral codes for fee discounts
+}
+
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_LOW = 1;     // Best effort, lowest fees
+  PRIORITY_NORMAL = 2;  // Standard processing
+  PRIORITY_HIGH = 3;    // Fast processing, higher fees
+  PRIORITY_CRITICAL = 4; // Immediate processing, premium fees
+  PRIORITY_EMERGENCY = 5; // NEW: For emergency/rescue operations
+}
+
+message FeePayment {
+  oneof payment_method {
+    PrepaidFees prepaid = 1;
+    PayOnDeliveryFees pay_on_delivery = 2;
+    RelayerAdvancedFees relayer_advanced = 3;
+    SubsidizedFees subsidized = 4;
+    EscrowedFees escrowed = 5;      // NEW: Fees held in escrow
+  }
+}
+
+message PrepaidFees {
+  repeated Fee fees_paid = 1;
+  bytes payment_tx_hash = 2; // 32-byte hash
+  uint64 paid_at_height = 3;        // NEW: Block height when payment was made
+}
+
+message PayOnDeliveryFees {
+  bytes fee_escrow_address = 1; // 20-byte EVM address
+  bytes escrow_proof = 2;
+  uint64 escrow_timeout = 3;        // NEW: When escrow expires
+}
+
+message RelayerAdvancedFees {
+  bytes reimbursement_guarantee = 1; // Signed guarantee
+  bytes relayer_signature = 2;      // NEW: Relayer's agreement to advance fees
+  uint64 reimbursement_deadline = 3; // NEW: When reimbursement is due
+}
+
+message SubsidizedFees {
+  string subsidy_program_id = 1;
+  bytes authorization_signature = 2; // NEW: Signature authorizing subsidy
+  Fee subsidy_amount = 3;           // NEW: Amount of subsidy applied
+}
+
+// NEW: Escrow-based fee payment for complex scenarios
+message EscrowedFees {
+  bytes escrow_contract = 1;        // Multi-sig or smart contract holding fees
+  repeated bytes signers = 2;       // Required signers for fee release
+  uint32 threshold = 3;             // Number of signatures required
+  uint64 escrow_expiry = 4;         // When escrow automatically releases
+}
+
+// ENHANCED: Fee with precision and chain context
+message Fee {
+  string amount = 1;        // String for arbitrary precision (handles DeFi amounts)
+  string denom = 2;         // Token denomination (e.g., "ETH", "ATOM", "USDC")
+  string chain_id = 3;      // NEW: Which chain this fee is denominated in
+  uint32 decimals = 4;      // NEW: Token decimals (e.g., 18 for ETH, 6 for USDC)
+}

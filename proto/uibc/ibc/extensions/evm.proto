@@ -1,0 +1,20 @@
+Syntax = "proto3";
+package uibc.ibc.extensions;
+
+message EVMExtension {
+// EIP-712 Domain Separator
+bytes domain_separator = 1;
+
+// Gas Parameters
+uint64 gas_limit = 2;
+uint64 max_fee_per_gas = 3; // EIP-1559
+uint64 max_priority_fee = 4;
+
+// Access List (EIP-2930)
+repeated AccessTuple access_list = 5;
+}
+
+message AccessTuple {
+bytes address = 1;
+repeated bytes storage_keys = 2;
+}

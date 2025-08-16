@@ -1,0 +1,9 @@
+Syntax = "proto3";
+package uibc.ibc.v1;
+
+// Extends IbcCompatibilityData
+message ICS20Extension {
+string base_denom = 1; // Original denom before IBC hops
+repeated string trace = 2; // ["transfer", "channel-1", ...]
+string memo = 3; // Custom metadata
+}

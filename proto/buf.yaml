@@ -1,0 +1,13 @@
+Version: v1
+breaking:
+use:
+- FILE
+lint:
+use:
+- DEFAULT
+plugins:
+- name: protoc-gen-go
+out: implementations/go
+opt: paths=source_relative
+- name: protoc-gen-rust
+out: implementations/rust/src/proto
