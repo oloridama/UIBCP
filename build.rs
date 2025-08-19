@@ -82,10 +82,12 @@ fn main() -> Result<()> {
     
     // Compile protobuf files (including dependency on ibc proto)
     let proto_files = vec![
-        "proto/uibc/v1/message.proto",
-        "proto/uibc/v1/proof.proto",
         "proto/uibc/v1/common.proto",
+        "proto/uibc/v1/proof.proto",
+        "proto/uibc/v1/message.proto",
+        "proto/uibc/v1/adapter.proto",
         "proto/uibc/ibc/v1/compatibility.proto",
+        "proto/uibc/ibc/v1/ics20.proto",
         "proto/uibc/ibc/extensions/evm.proto",
     ];
     
