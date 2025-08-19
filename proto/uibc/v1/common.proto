@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package uibc.v1;
 
+import "uibc/v1/proof.proto";
+
 // Shared height definition for IBC compatibility
 message Height {
   uint64 revision_number = 1;
@@ -40,8 +42,8 @@ message UniversalMessage {
   }
 
   // Verification Requirements (defined in proof.proto)
-  uibc.v1.ProofRequirement proof_requirement = 22;
-  uibc.v1.StateCheckpoint state_checkpoint = 23; // Chain state when message was created
+  ProofRequirement proof_requirement = 22;
+  StateCheckpoint state_checkpoint = 23; // Chain state when message was created
 
   // NEW: Economic Fields (Complete fee structure)
   MessageFees fees = 30; // Fee structure for this specific message
@@ -95,13 +97,22 @@ message ChainMetadata {
   uint64 average_block_time_ms = 1;    // Average block time in milliseconds
   uint64 finality_confirmations = 2;   // Blocks needed for finality
   repeated string supported_tokens = 3; // Native token denominations
-  uibc.v1.Fee base_gas_price = 4;      // Current base gas price (using proof.proto's Fee)
+  Fee base_gas_price = 4;              // Current base gas price
   float congestion_multiplier = 5;     // Current network congestion (1.0 = normal)
 }
 
 // Defines core types for V1
 message MessageId {
   bytes id = 1; // 32-byte hash of (source_chain_id + tx_hash + log_index)
+}
+
+// State checkpoint for message verification
+message StateCheckpoint {
+  uint64 height = 1;
+  bytes block_hash = 2; // 32-byte hash
+  bytes state_root = 3; // 32-byte hash
+  uint64 timestamp = 4;
+  bytes validator_set_hash = 5; // Hash of validator set at this height (optional, for light client updates)
 }
 
 // Message Content Definitions
@@ -143,7 +154,7 @@ message TransferMetadata {
   bool is_ibc_token = 1;           // True if this is an IBC-wrapped token
   repeated string trace_path = 2;   // IBC trace path (e.g., ["transfer", "channel-0"])
   string original_denom = 3;        // Original denomination before IBC wrapping
-  uibc.v1.Fee bridge_fee = 4;      // Additional bridge fee (if applicable, using proof.proto's Fee)
+  Fee bridge_fee = 4;              // Additional bridge fee (if applicable)
 }
 
 // NEW: Batch transfer for efficiency and cost reduction
@@ -177,7 +188,7 @@ message ContractCallMetadata {
 // ENHANCED: StateQuery with metadata
 message StateQuery {
   bytes storage_key = 1;   // Key to query in destination chain state
-  uibc.v1.ProofType proof_type = 2; // What kind of proof is needed
+  ProofType proof_type = 2; // What kind of proof is needed
   
   // NEW: Query metadata for optimization
   StateQueryMetadata metadata = 3;
@@ -206,14 +217,14 @@ message Acknowledgment {
 message AckMetadata {
   uint64 processed_at = 1;          // When the original message was processed
   uint64 gas_used = 2;              // Gas consumed during processing
-  uibc.v1.Fee actual_fee = 3;       // Actual fee charged (using proof.proto's Fee)
+  Fee actual_fee = 3;               // Actual fee charged
   bytes relayer_address = 4;        // Address of relayer who processed the message
 }
 
 // ENHANCED: Error with context for debugging
 message Error {
   bytes original_message_id = 1; // 32-byte hash
-  uibc.v1.ErrorType error_type = 2;
+  ErrorType error_type = 2;
   string description = 3;
   
   // NEW: Error context for better debugging
@@ -242,7 +253,7 @@ message RelayerAssignment {
 
 // NEW: Relayer bonding system for security
 message RelayerBond {
-  uibc.v1.Fee minimum_bond = 1;     // Base bond requirement (using proof.proto's Fee)
+  Fee minimum_bond = 1;             // Base bond requirement
   float value_multiplier = 2;       // Additional bond based on message value (e.g., 0.1 = 10%)
   uint64 lock_period_seconds = 3;   // How long bond is locked after message
   repeated SlashingCondition slashing_conditions = 4;
@@ -283,11 +294,11 @@ enum SelectionMethod {
 }
 
 message EconomicParameters {
-  uibc.v1.Fee estimated_value = 1;
+  Fee estimated_value = 1;
   Priority priority = 2;
-  uibc.v1.Fee max_total_fee = 3;
+  Fee max_total_fee = 3;
   FeePayment fee_payment = 4;
-  uibc.v1.Fee timeout_compensation = 5;
+  Fee timeout_compensation = 5;
   
   // NEW: Advanced economic parameters for complex scenarios
   IncentiveParameters incentives = 6;
@@ -295,8 +306,8 @@ message EconomicParameters {
 
 // NEW: Incentive parameters for user loyalty and volume discounts
 message IncentiveParameters {
-  uibc.v1.Fee early_completion_bonus = 1;   // Bonus for completing before deadline
-  uibc.v1.Fee volume_discount = 2;          // Discount for high-volume users
+  Fee early_completion_bonus = 1;   // Bonus for completing before deadline
+  Fee volume_discount = 2;          // Discount for high-volume users
   string loyalty_program_id = 3;    // Loyalty program membership
   repeated string referral_codes = 4; // Referral codes for fee discounts
 }
@@ -321,7 +332,7 @@ message FeePayment {
 }
 
 message PrepaidFees {
-  repeated uibc.v1.Fee fees_paid = 1;
+  repeated Fee fees_paid = 1;
   bytes payment_tx_hash = 2; // 32-byte hash
   uint64 paid_at_height = 3;        // NEW: Block height when payment was made
 }
@@ -341,7 +352,7 @@ message RelayerAdvancedFees {
 message SubsidizedFees {
   string subsidy_program_id = 1;
   bytes authorization_signature = 2; // NEW: Signature authorizing subsidy
-  uibc.v1.Fee subsidy_amount = 3;   // NEW: Amount of subsidy applied
+  Fee subsidy_amount = 3;           // NEW: Amount of subsidy applied
 }
 
 // NEW: Escrow-based fee payment for complex scenarios
@@ -350,4 +361,44 @@ message EscrowedFees {
   repeated bytes signers = 2;       // Required signers for fee release
   uint32 threshold = 3;             // Number of signatures required
   uint64 escrow_expiry = 4;         // When escrow automatically releases
+}
+
+// Fee structure for messages
+message MessageFees {
+  Fee base_fee = 1;           // Basic relayer operational cost
+  Fee complexity_fee = 2;     // Based on message size/complexity  
+  Fee verification_fee = 3;   // Proof verification cost
+  Fee destination_fee = 4;    // Destination chain specific costs
+  Fee priority_fee = 5;       // For priority processing (optional)
+  Fee timeout_insurance = 6;  // Insurance for timeout handling (optional)
+  Fee total_fee = 7;         // Sum of all fees above
+  
+  // NEW: Fee distribution breakdown for relayer economics
+  FeeDistribution distribution = 8;
+}
+
+// NEW: Fee distribution model for sustainable economics
+message FeeDistribution {
+  uint32 relayer_share_bps = 1;    // Basis points (e.g., 5000 = 50%)
+  uint32 protocol_share_bps = 2;   // Protocol treasury share
+  uint32 verifier_share_bps = 3;   // Proof verifier rewards
+  uint32 validator_share_bps = 4;  // Validator/sequencer rewards (if applicable)
+  
+  // NEW: Performance bonuses to incentivize good relayer behavior
+  repeated PerformanceBonus bonuses = 5;
+}
+
+// NEW: Performance-based incentives
+message PerformanceBonus {
+  PerformanceMetric metric = 1;
+  uint32 threshold_bps = 2;        // Threshold in basis points (e.g., 9500 = 95%)
+  uint32 bonus_percentage = 3;     // Bonus percentage (e.g., 20 = 20% extra)
+}
+
+enum PerformanceMetric {
+  PERFORMANCE_METRIC_UNSPECIFIED = 0;
+  PERFORMANCE_METRIC_SUCCESS_RATE = 1;      // % of successful deliveries
+  PERFORMANCE_METRIC_LATENCY = 2;           // Average delivery time
+  PERFORMANCE_METRIC_UPTIME = 3;            // Relayer availability %
+  PERFORMANCE_METRIC_VOLUME = 4;            // Total value processed
 }
