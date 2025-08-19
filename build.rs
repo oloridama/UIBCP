@@ -88,7 +88,7 @@ fn main() -> Result<()> {
         "proto/uibc/ibc/extensions/evm.proto",
     ];
     
-    let include_dirs = vec!["proto/", "proto/ibc/core/commitment/"]; // Add ibc proto path
+    let include_dirs = vec!["proto/"]; 
     
     config.compile_protos(&proto_files, &include_dirs)?;
     
