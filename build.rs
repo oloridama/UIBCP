@@ -84,6 +84,7 @@ fn main() -> Result<()> {
     let proto_files = vec![
         "proto/uibc/v1/message.proto",
         "proto/uibc/v1/proof.proto",
+        "proto/uibc/v1/common.proto",
         "proto/uibc/ibc/v1/compatibility.proto",
         "proto/uibc/ibc/extensions/evm.proto",
     ];
@@ -100,7 +101,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn generate_helper_code(out_dir: &Path, proto_files: &[&str]) -> Result<()> {
+fn generate_helper_code(out_dir: &Path) -> Result<()> {
     let helpers_path = out_dir.join("uibc_gen.rs");
     let mut file = fs::File::create(&helpers_path)?;
 
