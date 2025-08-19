@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Universal Interoperability Blockchain Communication Protocol (UIBCP)
+// Main message definitions and complex economic structures
+//
+// This file contains the core UniversalMessage type and all related message
+// payloads, economic parameters, and relayer coordination structures.
+// It imports both common.proto and proof.proto to access shared types.
+
 syntax = "proto3";
 
 package uibc.v1;
@@ -5,149 +13,342 @@ package uibc.v1;
 import "uibc/v1/common.proto";
 import "uibc/v1/proof.proto";
 
+// Code generation options for multiple languages
+option go_package = "github.com/oloridama/UIBCP/proto/uibc/v1";
+option java_package = "com.oloridama.uibcp.v1";
+option java_multiple_files = true;
+option java_outer_classname = "MessageProto";
+option csharp_namespace = "Uibcp.V1";
+
 // ====================
 // CORE MESSAGE
 // ====================
+// The heart of the UIBCP protocol - designed for maximum flexibility
+// Best Practice: Keep core message focused, use oneofs for extensibility
 
-// The UniversalMessage is the core message format for the UIBCP Protocol
+// The UniversalMessage is the core message format for the UIBCP Protocol.
+// It is designed to be chain-agnostic and extensible for future protocol updates.
+// Best Practice: Use structured approach with clear field groupings
 message UniversalMessage {
-  // Protocol Metadata
+  // Protocol Metadata - Core identification and versioning
+  // Version of the UIBCP protocol (for backward compatibility)
   uint32 version = 1;
-  bytes message_id = 2;      // Unique identifier across all chains
-  uint64 created_at = 3;     // Unix timestamp when message was created
+  
+  // Unique identifier across all chains (32-byte hash recommended)
+  // Format: hash(source_chain + tx_hash + log_index + nonce)
+  bytes message_id = 2;
+  
+  // Unix timestamp when message was created on source chain
+  // Used for timeout calculations and proof freshness validation
+  uint64 created_at = 3;
 
-  // Routing Information
+  // Routing Information - Where the message comes from and goes to
+  // Source chain endpoint with full routing context
   ChainEndpoint source = 4;
+  
+  // Destination chain endpoint with execution parameters
   ChainEndpoint destination = 5;
-  repeated string route_hints = 6; // Suggested routing path
+  
+  // Suggested routing path for optimal delivery
+  // Example: ["ethereum-1", "polygon-137", "arbitrum-42161"]
+  repeated string route_hints = 6;
 
-  // Message Content
+  // Message Content - What action should be performed
+  // High-level message type for quick filtering and routing
   MessageType message_type = 7;
+  
+  // Specific message payload - exactly one must be set
+  // Best Practice: Use oneof for type-safe message discrimination
   oneof payload {
-    TokenTransfer token_transfer = 10;
-    ContractCall contract_call = 11;
-    StateQuery state_query = 12;
-    Acknowledgment acknowledgment = 13;
-    Error error = 14;
-    BatchTransfer batch_transfer = 15;
+    TokenTransfer token_transfer = 10;      // Simple token movements
+    ContractCall contract_call = 11;        // Smart contract execution
+    StateQuery state_query = 12;            // Query chain state with proofs
+    Acknowledgment acknowledgment = 13;     // Response to processed message
+    Error error = 14;                       // Error notification
+    BatchTransfer batch_transfer = 15;      // Multiple token transfers
   }
 
-  // Timeouts (IBC-compatible)
+  // Timeout Configuration - IBC-compatible timeout handling
+  // Exactly one timeout type must be specified for safety
+  // Best Practice: Always specify timeouts to prevent indefinite blocking
   oneof timeout {
-    Height timeout_height = 20;
-    uint64 timeout_timestamp = 21;
+    Height timeout_height = 20;       // Absolute block height timeout
+    uint64 timeout_timestamp = 21;    // Unix timestamp timeout
   }
 
-  // Verification Requirements
+  // Verification Requirements - Security and proof parameters
+  // Specifies what kind of proof is required for this message
   ProofRequirement proof_requirement = 22;
+  
+  // Chain state when message was created (for proof context)
   StateCheckpoint state_checkpoint = 23;
 
-  // Economic Fields
+  // Economic Fields - Complete fee structure and relayer coordination
+  // Comprehensive fee breakdown for transparent pricing
   MessageFees fees = 30;
+  
+  // Relayer selection and bonding requirements
   RelayerAssignment relayer_assignment = 31;
+  
+  // Advanced economic parameters for complex scenarios
   EconomicParameters economic_parameters = 32;
+
+  // Extension ranges for protocol extensions (e.g., IBC compatibility)
+  // Best Practice: Reserve extension ranges for future protocol extensions
+  // Range 40-99 reserved for IBC compatibility extensions
+  extensions 40 to 99;
+  
+  // Range 100-199 reserved for custom protocol extensions
+  extensions 100 to 199;
 }
 
 // ====================
 // CHAIN ENDPOINT
 // ====================
+// Comprehensive chain addressing with multi-ecosystem support
+// Best Practice: Support multiple addressing schemes for broad compatibility
 
+// ENHANCED: ChainEndpoint with type information for better routing
+// Supports multiple blockchain ecosystems with their specific addressing needs
 message ChainEndpoint {
+  // Universal chain identifier (should be globally unique)
+  // Examples: "ethereum-1", "cosmoshub-4", "solana-mainnet"
   string chain_id = 1;
+  
+  // Chain categorization for routing optimization and adapter selection
   ChainType chain_type = 2;
   
-  // IBC-specific fields (optional)
+  // IBC-specific fields (optional, used for Cosmos ecosystem)
+  // IBC connection identifier for this chain pair
   string connection_id = 3;
+  
+  // IBC channel identifier for application-specific routing
   string channel_id = 4;
+  
+  // IBC port identifier (e.g., "transfer", "icahost")
   string port_id = 5;
   
-  // EVM-specific fields (optional)
+  // EVM-specific fields (optional, used for Ethereum-compatible chains)
+  // Smart contract address for message handling (20 bytes for EVM)
   bytes contract_address = 6;
+  
+  // EIP-155 chain ID for EVM networks
   uint64 evm_chain_id = 7;
   
-  // Solana-specific fields (optional)
+  // NEW: Solana-specific fields for future expansion
+  // Solana program ID for message processing (32 bytes)
   bytes program_id = 8;
+  
+  // Solana account address for state storage
   string account_address = 9;
   
-  // UTXO-specific fields (optional)
+  // NEW: UTXO-specific fields for Bitcoin-like chains
+  // Bitcoin script hash for UTXO-based addressing
   string script_hash = 10;
   
-  // Chain-specific metadata
+  // NEW: Chain-specific metadata for optimization and fee calculation
   ChainMetadata metadata = 15;
 }
 
+// NEW: Chain metadata for better fee calculation and routing decisions
+// Helps relayers optimize routing and estimate costs accurately
 message ChainMetadata {
+  // Average time between blocks in milliseconds
+  // Used for timeout calculations and delivery estimation
   uint64 average_block_time_ms = 1;
+  
+  // Number of block confirmations needed for finality
+  // Higher values = more security, longer delays
   uint64 finality_confirmations = 2;
+  
+  // List of native token denominations supported
+  // Helps with fee payment validation and routing
   repeated string supported_tokens = 3;
+  
+  // Current base gas price for fee estimation
+  // Updated periodically by chain monitors
   Fee base_gas_price = 4;
+  
+  // Network congestion multiplier (1.0 = normal, >1.0 = congested)
+  // Used to adjust fees based on current network conditions
   float congestion_multiplier = 5;
 }
 
 // ====================
 // STATE CHECKPOINT
 // ====================
+// Cryptographic commitment to chain state for proof verification
+// Best Practice: Include all necessary data for independent verification
 
+// State checkpoint for message verification and proof context
+// Provides cryptographic commitment to source chain state when message was created
 message StateCheckpoint {
+  // Block height where this state checkpoint was taken
   uint64 height = 1;
+  
+  // Hash of the block at this height (32 bytes)
+  // Provides cryptographic commitment to specific block
   bytes block_hash = 2;
+  
+  // Merkle root of chain state at this height (32 bytes)
+  // Used for state inclusion proofs and verification
   bytes state_root = 3;
+  
+  // Timestamp of the block (Unix timestamp)
+  // Used for timeout calculations and freshness validation
   uint64 timestamp = 4;
+  
+  // Hash of validator set at this height (optional, for light clients)
+  // Required for Tendermint-style light client updates
   bytes validator_set_hash = 5;
 }
 
 // ====================
 // MESSAGE PAYLOADS
 // ====================
+// Specific message types with rich metadata for various use cases
+// Best Practice: Include metadata for optimization and debugging
 
+// ENHANCED: TokenTransfer with string amounts for DeFi compatibility
+// Supports arbitrary precision amounts and comprehensive transfer metadata
 message TokenTransfer {
+  // Token denomination following IBC format
+  // Examples: "uatom", "wei", "ibc/ABC123DEF456..." (for IBC tokens)
   string denom = 1;
-  string amount = 2;        // String for arbitrary precision
+  
+  // Amount as string for arbitrary precision (prevents overflow)
+  // Example: "1000000000000000000" for 1.0 ETH (18 decimals)
+  // Best Practice: Always use string for financial amounts
+  string amount = 2;
+  
+  // Sender address in chain-specific format
+  // Examples: "cosmos1abc...", "0x1234...", "ABC123..." (Solana)
   string sender = 3;
+  
+  // Receiver address on destination chain
+  // Format must match destination chain's address format
   string receiver = 4;
+  
+  // Optional memo/data field for additional information
+  // Can include routing instructions or application data
   string memo = 5;
+  
+  // NEW: Additional transfer metadata for complex transfers
   TransferMetadata metadata = 6;
 }
 
+// NEW: Transfer metadata for IBC tracing and bridge fee handling
+// Provides context for multi-hop transfers and fee optimization
 message TransferMetadata {
+  // True if this is an IBC-wrapped token from another chain
   bool is_ibc_token = 1;
+  
+  // IBC trace path showing token's journey across chains
+  // Example: ["transfer/channel-0", "transfer/channel-5"]
   repeated string trace_path = 2;
+  
+  // Original denomination before IBC wrapping
+  // Useful for displaying user-friendly token names
   string original_denom = 3;
+  
+  // Additional bridge fee required for this specific token
+  // Some bridges charge extra fees for certain tokens
   Fee bridge_fee = 4;
 }
 
+// NEW: Batch transfer for efficiency and cost reduction
+// Allows multiple transfers in a single cross-chain message
 message BatchTransfer {
+  // List of individual transfers to execute
+  // All transfers are processed together for efficiency
   repeated TokenTransfer transfers = 1;
+  
+  // Whether all transfers must succeed or all fail
+  // true = atomic execution, false = best-effort partial execution
   bool atomic_execution = 2;
+  
+  // Memo for the entire batch operation
   string batch_memo = 3;
+  
+  // Maximum time allowed to complete all transfers
+  // Individual transfers may have shorter timeouts
   uint64 max_batch_timeout = 4;
 }
 
+// ENHANCED: ContractCall with metadata for complex operations
+// Supports advanced contract execution with gas optimization
 message ContractCall {
+  // Contract address to call on destination chain
+  // Format: 20 bytes for EVM, 32 bytes for Solana, varies for others
   bytes target_contract = 1;
+  
+  // Function signature hash (typically 4 bytes for EVM)
+  // Used to identify which contract function to call
   bytes function_selector = 2;
+  
+  // ABI-encoded call data with function parameters
+  // Format is chain-specific (e.g., Ethereum ABI encoding)
   bytes call_data = 3;
+  
+  // Native token value to send with the call
+  // String format for arbitrary precision (e.g., wei for Ethereum)
   string value = 4;
+  
+  // NEW: Enhanced contract call metadata for optimization
   ContractCallMetadata metadata = 5;
 }
 
+// NEW: Contract call metadata for permissions and gas optimization
+// Helps estimate costs and validate permissions before execution
 message ContractCallMetadata {
+  // Maximum gas limit for contract execution
+  // Prevents runaway execution and DoS attacks
   uint64 gas_limit = 1;
+  
+  // Contract standard identifier for validation
+  // Examples: "ERC20", "ERC721", "CW20", "SPL-Token"
   string contract_standard = 2;
+  
+  // Required permissions or capabilities for execution
+  // Used for access control and validation
   repeated string required_permissions = 3;
+  
+  // Priority level for execution ordering
+  // Higher values get executed first (with higher fees)
   uint32 call_priority = 4;
+  
+  // EIP-2930 access list for gas optimization on Ethereum
+  // Pre-declares storage slots that will be accessed
   bytes access_list = 5;
 }
 
+// ENHANCED: StateQuery with metadata for optimized querying
+// Supports various types of state queries with proof requirements
 message StateQuery {
+  // Storage key to query in destination chain state
+  // Format is chain-specific (e.g., Keccak256 hash for Ethereum)
   bytes storage_key = 1;
+  
+  // Type of cryptographic proof required for the query result
   ProofType proof_type = 2;
+  
+  // NEW: Query metadata for optimization and specificity
   StateQueryMetadata metadata = 3;
 }
 
+// NEW: State query metadata for specific query types
+// Provides context for more efficient query processing
 message StateQueryMetadata {
+  // Type of storage being queried
+  // Examples: "account", "contract", "validator", "governance"
   string storage_type = 1;
+  
+  // Specific height to query (0 = latest available)
+  // Allows historical state queries
   uint64 query_height = 2;
+  
+  // Whether to include cryptographic proof with response
+  // Proofs increase message size but enable verification
   bool include_proof = 3;
 }
 
