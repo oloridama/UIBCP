@@ -3,6 +3,7 @@ syntax = "proto3";
 package uibc.ibc.v1;
 
 import "uibc/v1/common.proto";
+import "uibc/ibc/v1/message.proto";
 
 // Extends UniversalMessage.ibc_data field
 message IbcCompatibilityData {
