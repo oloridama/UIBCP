@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package uibc.v1;
 
-import "uibc/v1/common.proto";
-
 // ====================
 // PROOF-RELATED ENUMS
 // ====================
