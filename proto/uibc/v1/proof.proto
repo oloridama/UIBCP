@@ -1,5 +1,12 @@
 syntax = "proto3";
+
 package uibc.v1;
+
+import "uibc/v1/common.proto";
+
+// ====================
+// PROOF-RELATED ENUMS
+// ====================
 
 enum ProofType {
   PROOF_TYPE_UNSPECIFIED = 0;
@@ -21,133 +28,131 @@ enum ErrorType {
   ERROR_TYPE_VALIDATION_FAILED = 6;
 }
 
-// COMPLETED: Missing ProofRequirement definition
-message ProofRequirement {
-  oneof requirement {
-    LightClientProof light_client = 1;
-    ZkProofRequirement zk_proof = 2;
-    OptimisticProof optimistic = 3;
-    CommitteeProof committee = 4;          // NEW: For PoA/federated chains
-    NoProofRequired none = 5;              // NEW: For acknowledgments, etc.
-  }
-}
+// ====================
+// BASIC FEE STRUCTURE
+// ====================
 
-// NEW: Light client proof requirements
-message LightClientProof {
-  uint32 min_confirmations = 1;         // Minimum confirmations required
-  uint64 max_age_seconds = 2;           // Maximum age of proof
-  string client_type = 3;               // "tendermint", "ethereum", etc.
-}
-
-// NEW: ZK proof requirements with gas optimization
-message ZkProofRequirement {
-  string circuit_id = 1;                // Identifier for ZK circuit
-  repeated bytes public_inputs = 2;     // Required public inputs  
-  string proof_system = 3;              // "groth16", "plonk", "stark"
-  uint32 verification_gas_limit = 4;    // Gas limit for on-chain verification
-}
-
-// COMPLETED: Missing OptimisticProof definition (critical for your new design)
-message OptimisticProof {
-  uint64 challenge_period_seconds = 1;  // How long challenges are accepted
-  Fee required_bond = 2;                // Bond required to submit proof
-  Fee challenger_reward = 3;            // Reward for successful challenge
-}
-
-// NEW: Committee proof for federated chains
-message CommitteeProof {
-  uint32 threshold_percentage = 1;      // Required % of committee signatures (basis points)
-  repeated bytes committee_members = 2; // Public keys of committee members
-  uint64 signature_timeout = 3;         // Time limit for collecting signatures
-}
-
-// NEW: No proof required (for simple acknowledgments)
-message NoProofRequired {
-  string reason = 1;                    // Why no proof is needed (e.g., "acknowledgment")
-}
-
-// ENHANCED: UniversalProof with metadata for optimization
-message UniversalProof {
-  // NEW: Proof metadata for gas estimation and optimization
-  ProofMetadata metadata = 1;
-  
-  oneof proof {
-    MerkleProof merkle = 2;
-    ZkProof zk = 3;
-    OptimisticProofData optimistic = 4; // NEW: Optimistic proof data
-    CommitteeSignatures committee = 5;  // NEW: Committee signatures
-  }
-}
-
-// NEW: Proof metadata for gas estimation and verification cost
-message ProofMetadata {
-  uint64 proof_height = 1;
-  bytes block_hash = 2;
-  uint64 timestamp = 3;
-  uint32 verification_cost_estimate = 4;  // Gas/computation units needed
-}
-
-// A Merkle root is a cryptographic commitment to a set of data.
-message MerkleRoot {
-  // A 32-byte hash representing the root of a Merkle tree.
-  bytes hash = 1;
-}
-
-// MerkleProof represents an authenticated inclusion proof for a key-value pair.
-message MerkleProof {
-  // The Merkle root that this proof is committed to.
-  MerkleRoot root = 1;
-
-  // The leaf hash of the value being proven, typically H(key, value).
-  bytes leaf_hash = 2;
-
-  // The hashes of the siblings in the Merkle tree path.
-  // These are used to recompute the Merkle root from the leaf.
-  repeated bytes siblings = 3;
-
-  // An array of booleans indicating the direction to hash at each step.
-  // 'false' typically means H(sibling, current_hash), and 'true' means H(current_hash, sibling).
-  repeated bool path_bits = 4;
-}
-
-// ENHANCED: ZkProof with economic metadata
-message ZkProof {
-  string circuit_id = 1;
-  bytes proof_data = 2;
-  repeated bytes public_inputs = 3; // Packed as [state_root, timestamp, ...]
-  
-  // NEW: Economic metadata for your Optimistic Dual-Proof design
-  uint64 proof_generation_cost = 4;  // Cost to generate proof
-  uint32 verification_gas_limit = 5; // Gas needed to verify on-chain
-  string proof_system = 6;           // "groth16", "plonk", "stark", etc.
-}
-
-// NEW: Optimistic proof data for your breakthrough design
-message OptimisticProofData {
-  bytes claim = 1;                    // The claim being made optimistically
-  uint64 submitted_at = 2;            // When the optimistic proof was submitted
-  bytes submitter = 3;                // Address of the submitter (relayer)
-  bytes canonical_proof_hash = 4;     // Hash of the underlying canonical proof
-}
-
-// NEW: Committee signatures for federated/PoA chains
-message CommitteeSignatures {
-  repeated Signature signatures = 1;
-  bytes validator_set_hash = 2;       // Hash of the validator set
-  uint64 total_voting_power = 3;      // Total voting power of the set
-}
-
-// NEW: Individual signature with voting power
-message Signature {
-  bytes signature = 1;                // The actual signature bytes
-  bytes public_key = 2;               // Signer's public key
-  uint64 validator_power = 3;         // Voting power of this validator
-}
-
-// Import the Fee message for bond requirements
+// Fee message (needed by many other messages)
 message Fee {
   string amount = 1;
   string denom = 2;
   string chain_id = 3;
   uint32 decimals = 4;
+}
+
+// ====================
+// PROOF REQUIREMENTS
+// ====================
+
+message ProofRequirement {
+  oneof requirement {
+    LightClientProof light_client = 1;
+    ZkProofRequirement zk_proof = 2;
+    OptimisticProof optimistic = 3;
+    CommitteeProof committee = 4;
+    NoProofRequired none = 5;
+  }
+}
+
+// Light client proof requirements
+message LightClientProof {
+  uint32 min_confirmations = 1;
+  uint64 max_age_seconds = 2;
+  string client_type = 3;               // "tendermint", "ethereum", etc.
+}
+
+// ZK proof requirements with gas optimization
+message ZkProofRequirement {
+  string circuit_id = 1;
+  repeated bytes public_inputs = 2;
+  string proof_system = 3;              // "groth16", "plonk", "stark"
+  uint32 verification_gas_limit = 4;
+}
+
+// Optimistic proof requirements
+message OptimisticProof {
+  uint64 challenge_period_seconds = 1;
+  Fee required_bond = 2;
+  Fee challenger_reward = 3;
+}
+
+// Committee proof for federated chains
+message CommitteeProof {
+  uint32 threshold_percentage = 1;      // Required % of committee signatures
+  repeated bytes committee_members = 2;
+  uint64 signature_timeout = 3;
+}
+
+// No proof required
+message NoProofRequired {
+  string reason = 1;
+}
+
+// ====================
+// PROOF DATA STRUCTURES
+// ====================
+
+// Universal proof container
+message UniversalProof {
+  ProofMetadata metadata = 1;
+  
+  oneof proof {
+    MerkleProof merkle = 2;
+    ZkProof zk = 3;
+    OptimisticProofData optimistic = 4;
+    CommitteeSignatures committee = 5;
+  }
+}
+
+// Proof metadata for gas estimation
+message ProofMetadata {
+  uint64 proof_height = 1;
+  bytes block_hash = 2;
+  uint64 timestamp = 3;
+  uint32 verification_cost_estimate = 4;
+}
+
+// Merkle root commitment
+message MerkleRoot {
+  bytes hash = 1;
+}
+
+// Merkle inclusion proof
+message MerkleProof {
+  MerkleRoot root = 1;
+  bytes leaf_hash = 2;
+  repeated bytes siblings = 3;
+  repeated bool path_bits = 4;
+}
+
+// ZK proof with economic metadata
+message ZkProof {
+  string circuit_id = 1;
+  bytes proof_data = 2;
+  repeated bytes public_inputs = 3;
+  uint64 proof_generation_cost = 4;
+  uint32 verification_gas_limit = 5;
+  string proof_system = 6;
+}
+
+// Optimistic proof data
+message OptimisticProofData {
+  bytes claim = 1;
+  uint64 submitted_at = 2;
+  bytes submitter = 3;
+  bytes canonical_proof_hash = 4;
+}
+
+// Committee signatures for federated chains
+message CommitteeSignatures {
+  repeated Signature signatures = 1;
+  bytes validator_set_hash = 2;
+  uint64 total_voting_power = 3;
+}
+
+// Individual signature with voting power
+message Signature {
+  bytes signature = 1;
+  bytes public_key = 2;
+  uint64 validator_power = 3;
 }
