@@ -1,8 +1,6 @@
 syntax = "proto3";
 package uibc.v1;
 
-import "ibc/core/commitment/merkle.proto";
-
 // COMPLETED: Missing ProofRequirement definition
 message ProofRequirement {
   oneof requirement {
@@ -69,12 +67,27 @@ message ProofMetadata {
   uint32 verification_cost_estimate = 4;  // Gas/computation units needed
 }
 
+// A Merkle root is a cryptographic commitment to a set of data.
+message MerkleRoot {
+  // A 32-byte hash representing the root of a Merkle tree.
+  bytes hash = 1;
+}
+
+// MerkleProof represents an authenticated inclusion proof for a key-value pair.
 message MerkleProof {
-  ibc.core.commitment.MerkleRoot root = 1;
-  repeated bytes path = 2; // IAVL tree path
-  // NEW: Additional fields for complete Merkle proof verification
-  bytes value = 3;                      // The value being proven
-  repeated bytes siblings = 4;          // Sibling hashes for path verification
+  // The Merkle root that this proof is committed to.
+  MerkleRoot root = 1;
+
+  // The leaf hash of the value being proven, typically H(key, value).
+  bytes leaf_hash = 2;
+
+  // The hashes of the siblings in the Merkle tree path.
+  // These are used to recompute the Merkle root from the leaf.
+  repeated bytes siblings = 3;
+
+  // An array of booleans indicating the direction to hash at each step.
+  // 'false' typically means H(sibling, current_hash), and 'true' means H(current_hash, sibling).
+  repeated bool path_bits = 4;
 }
 
 // ENHANCED: ZkProof with economic metadata
