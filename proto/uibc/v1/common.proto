@@ -137,134 +137,6 @@ enum MessageType {
   MESSAGE_TYPE_CHANNEL_HANDSHAKE = 8;
 }
 
-// ENHANCED: TokenTransfer with string amounts for large numbers (DeFi compatibility)
-message TokenTransfer {
-  string denom = 1;         // Token denomination (e.g., "uatom", "ibc/ABC123...")
-  string amount = 2;        // Amount as string for arbitrary precision (handles DeFi amounts)
-  string sender = 3;        // Sender address (chain-specific format)
-  string receiver = 4;      // Receiver address (chain-specific format)
-  string memo = 5;          // Optional memo/data
-  
-  // NEW: Additional transfer metadata for complex transfers
-  TransferMetadata metadata = 6;
-}
-
-// NEW: Transfer metadata for IBC tracing and bridge fees
-message TransferMetadata {
-  bool is_ibc_token = 1;           // True if this is an IBC-wrapped token
-  repeated string trace_path = 2;   // IBC trace path (e.g., ["transfer", "channel-0"])
-  string original_denom = 3;        // Original denomination before IBC wrapping
-  Fee bridge_fee = 4;              // Additional bridge fee (if applicable)
-}
-
-// NEW: Batch transfer for efficiency and cost reduction
-message BatchTransfer {
-  repeated TokenTransfer transfers = 1;
-  bool atomic_execution = 2;        // All transfers succeed or all fail
-  string batch_memo = 3;            // Memo for the entire batch
-  uint64 max_batch_timeout = 4;     // Maximum time to complete all transfers
-}
-
-// ENHANCED: ContractCall with metadata for complex operations
-message ContractCall {
-  bytes target_contract = 1; // Contract to call on destination (e.g., 20-byte EVM address)
-  bytes function_selector = 2; // Function signature hash (4-byte)
-  bytes call_data = 3;       // ABI-encoded call data
-  string value = 4;          // Native token value to send (string for precision)
-  
-  // NEW: Enhanced contract call metadata
-  ContractCallMetadata metadata = 5;
-}
-
-// NEW: Contract call metadata for permissions and optimization
-message ContractCallMetadata {
-  uint64 gas_limit = 1;             // Gas limit for execution
-  string contract_standard = 2;     // "ERC20", "ERC721", "CW20", etc.
-  repeated string required_permissions = 3; // Required permissions/capabilities
-  uint32 call_priority = 4;         // Priority for execution ordering
-  bytes access_list = 5;            // EIP-2930 access list (for EVM)
-}
-
-// ENHANCED: StateQuery with metadata
-message StateQuery {
-  bytes storage_key = 1;   // Key to query in destination chain state
-  ProofType proof_type = 2; // What kind of proof is needed
-  
-  // NEW: Query metadata for optimization
-  StateQueryMetadata metadata = 3;
-}
-
-// NEW: State query metadata for specific queries
-message StateQueryMetadata {
-  string storage_type = 1;          // "account", "contract", "validator", etc.
-  uint64 query_height = 2;          // Specific height to query (0 = latest)
-  bool include_proof = 3;           // Whether to include merkle proof
-}
-
-// ENHANCED: Acknowledgment with metadata
-message Acknowledgment {
-  bytes original_message_id = 1; // 32-byte hash
-  bool success = 2;
-  bytes result_data = 3; // Execution result if successful
-  uint32 error_code = 4;
-  string error_message = 5;
-  
-  // NEW: Acknowledgment metadata for analytics
-  AckMetadata metadata = 6;
-}
-
-// NEW: Acknowledgment metadata for performance tracking
-message AckMetadata {
-  uint64 processed_at = 1;          // When the original message was processed
-  uint64 gas_used = 2;              // Gas consumed during processing
-  Fee actual_fee = 3;               // Actual fee charged
-  bytes relayer_address = 4;        // Address of relayer who processed the message
-}
-
-// ENHANCED: Error with context for debugging
-message Error {
-  bytes original_message_id = 1; // 32-byte hash
-  ErrorType error_type = 2;
-  string description = 3;
-  
-  // NEW: Error context for better debugging
-  ErrorContext context = 4;
-}
-
-// NEW: Error context for debugging and retry logic
-message ErrorContext {
-  uint64 failed_at_height = 1;      // Height where error occurred
-  string failed_at_chain = 2;       // Chain where error occurred
-  bytes failed_step = 3;            // Which processing step failed
-  bool retryable = 4;               // Whether this error is retryable
-}
-
-// Relayer Economics & Assignment
-message RelayerAssignment {
-  bytes assigned_relayer = 1; // Pre-assigned relayer (optional, 20-byte EVM address)
-  uint64 assignment_deadline = 2; // When assignment expires
-  repeated bytes backup_relayers = 3; // Fallback relayers
-  bool competitive_mode = 4; // Allow multiple relayers to compete
-  
-  // NEW: Assignment metadata for complex routing
-  RelayerBond required_bond = 5;    // Bonding requirements
-  RelayerSelection selection_criteria = 6; // How relayer was selected
-}
-
-// NEW: Relayer bonding system for security
-message RelayerBond {
-  Fee minimum_bond = 1;             // Base bond requirement
-  float value_multiplier = 2;       // Additional bond based on message value (e.g., 0.1 = 10%)
-  uint64 lock_period_seconds = 3;   // How long bond is locked after message
-  repeated SlashingCondition slashing_conditions = 4;
-}
-
-// NEW: Slashing conditions to prevent malicious behavior
-message SlashingCondition {
-  SlashingOffense offense = 1;
-  uint32 slash_percentage = 2;      // Percentage of bond to slash (basis points)
-  bytes evidence_required = 3;      // What evidence is needed for slashing
-}
 
 enum SlashingOffense {
   SLASHING_OFFENSE_UNSPECIFIED = 0;
@@ -274,13 +146,6 @@ enum SlashingOffense {
   SLASHING_OFFENSE_MALICIOUS_ROUTING = 4;
   SLASHING_OFFENSE_UNAVAILABILITY = 5;    // NEW: Relayer went offline
   SLASHING_OFFENSE_DOUBLE_SPENDING = 6;   // NEW: Attempted double-spend
-}
-
-// NEW: Relayer selection mechanism
-message RelayerSelection {
-  SelectionMethod method = 1;
-  bytes selection_proof = 2;        // Proof of selection process (e.g., VRF)
-  uint64 selected_at = 3;           // When selection occurred
 }
 
 enum SelectionMethod {
@@ -293,25 +158,6 @@ enum SelectionMethod {
   SELECTION_METHOD_USER_SPECIFIED = 6;    // User chose specific relayer
 }
 
-message EconomicParameters {
-  Fee estimated_value = 1;
-  Priority priority = 2;
-  Fee max_total_fee = 3;
-  FeePayment fee_payment = 4;
-  Fee timeout_compensation = 5;
-  
-  // NEW: Advanced economic parameters for complex scenarios
-  IncentiveParameters incentives = 6;
-}
-
-// NEW: Incentive parameters for user loyalty and volume discounts
-message IncentiveParameters {
-  Fee early_completion_bonus = 1;   // Bonus for completing before deadline
-  Fee volume_discount = 2;          // Discount for high-volume users
-  string loyalty_program_id = 3;    // Loyalty program membership
-  repeated string referral_codes = 4; // Referral codes for fee discounts
-}
-
 enum Priority {
   PRIORITY_UNSPECIFIED = 0;
   PRIORITY_LOW = 1;     // Best effort, lowest fees
@@ -319,48 +165,6 @@ enum Priority {
   PRIORITY_HIGH = 3;    // Fast processing, higher fees
   PRIORITY_CRITICAL = 4; // Immediate processing, premium fees
   PRIORITY_EMERGENCY = 5; // NEW: For emergency/rescue operations
-}
-
-message FeePayment {
-  oneof payment_method {
-    PrepaidFees prepaid = 1;
-    PayOnDeliveryFees pay_on_delivery = 2;
-    RelayerAdvancedFees relayer_advanced = 3;
-    SubsidizedFees subsidized = 4;
-    EscrowedFees escrowed = 5;      // NEW: Fees held in escrow
-  }
-}
-
-message PrepaidFees {
-  repeated Fee fees_paid = 1;
-  bytes payment_tx_hash = 2; // 32-byte hash
-  uint64 paid_at_height = 3;        // NEW: Block height when payment was made
-}
-
-message PayOnDeliveryFees {
-  bytes fee_escrow_address = 1; // 20-byte EVM address
-  bytes escrow_proof = 2;
-  uint64 escrow_timeout = 3;        // NEW: When escrow expires
-}
-
-message RelayerAdvancedFees {
-  bytes reimbursement_guarantee = 1; // Signed guarantee
-  bytes relayer_signature = 2;      // NEW: Relayer's agreement to advance fees
-  uint64 reimbursement_deadline = 3; // NEW: When reimbursement is due
-}
-
-message SubsidizedFees {
-  string subsidy_program_id = 1;
-  bytes authorization_signature = 2; // NEW: Signature authorizing subsidy
-  Fee subsidy_amount = 3;           // NEW: Amount of subsidy applied
-}
-
-// NEW: Escrow-based fee payment for complex scenarios
-message EscrowedFees {
-  bytes escrow_contract = 1;        // Multi-sig or smart contract holding fees
-  repeated bytes signers = 2;       // Required signers for fee release
-  uint32 threshold = 3;             // Number of signatures required
-  uint64 escrow_expiry = 4;         // When escrow automatically releases
 }
 
 // Fee structure for messages
