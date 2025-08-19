@@ -15,7 +15,7 @@ import "uibc/v1/proof.proto";
 
 // Forward declaration for IBC compatibility
 // This will be defined in uibc/ibc/v1/compatibility.proto
-message IbcCompatibilityData;
+message IbcCompatibilityData {};
 
 // Code generation options for multiple languages
 option go_package = "github.com/oloidama/UIBCP/proto/uibc/v1";
