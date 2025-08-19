@@ -94,7 +94,7 @@ fn main() -> Result<()> {
     config.compile_protos(&proto_files, &include_dirs)?;
     
     // Generate helper code
-    generate_helper_code(&out_dir, &proto_files)?;
+    generate_helper_code(&out_dir)?;
     
     println!("Protobuf compilation completed successfully!");
     
