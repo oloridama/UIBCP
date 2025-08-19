@@ -2,48 +2,7 @@ syntax = "proto3";
 
 package uibc.v1;
 
-import "uibc/v1/proof.proto";
 import "uibc/v1/common.proto";
-
-// COMPLETED: Missing MessageFees definition
-message MessageFees {
-  uibc.v1.Fee base_fee = 1;           // Basic relayer operational cost
-  uibc.v1.Fee complexity_fee = 2;     // Based on message size/complexity  
-  uibc.v1.Fee verification_fee = 3;   // Proof verification cost
-  uibc.v1.Fee destination_fee = 4;    // Destination chain specific costs
-  uibc.v1.Fee priority_fee = 5;       // For priority processing (optional)
-  uibc.v1.Fee timeout_insurance = 6;  // Insurance for timeout handling (optional)
-  uibc.v1.Fee total_fee = 7;         // Sum of all fees above
-  
-  // NEW: Fee distribution breakdown for relayer economics
-  FeeDistribution distribution = 8;
-}
-
-// NEW: Fee distribution model for sustainable economics
-message FeeDistribution {
-  uint32 relayer_share_bps = 1;    // Basis points (e.g., 5000 = 50%)
-  uint32 protocol_share_bps = 2;   // Protocol treasury share
-  uint32 verifier_share_bps = 3;   // Proof verifier rewards
-  uint32 validator_share_bps = 4;  // Validator/sequencer rewards (if applicable)
-  
-  // NEW: Performance bonuses to incentivize good relayer behavior
-  repeated PerformanceBonus bonuses = 5;
-}
-
-// NEW: Performance-based incentives
-message PerformanceBonus {
-  PerformanceMetric metric = 1;
-  uint32 threshold_bps = 2;        // Threshold in basis points (e.g., 9500 = 95%)
-  uint32 bonus_percentage = 3;     // Bonus percentage (e.g., 20 = 20% extra)
-}
-
-enum PerformanceMetric {
-  PERFORMANCE_METRIC_UNSPECIFIED = 0;
-  PERFORMANCE_METRIC_SUCCESS_RATE = 1;      // % of successful deliveries
-  PERFORMANCE_METRIC_LATENCY = 2;           // Average delivery time
-  PERFORMANCE_METRIC_UPTIME = 3;            // Relayer availability %
-  PERFORMANCE_METRIC_VOLUME = 4;            // Total value processed
-}
 
 // ENHANCED: TokenTransfer with string amounts for large numbers (DeFi compatibility)
 message TokenTransfer {
@@ -62,7 +21,7 @@ message TransferMetadata {
   bool is_ibc_token = 1;           // True if this is an IBC-wrapped token
   repeated string trace_path = 2;   // IBC trace path (e.g., ["transfer", "channel-0"])
   string original_denom = 3;        // Original denomination before IBC wrapping
-  uibc.v1.Fee bridge_fee = 4;      // Additional bridge fee (if applicable, using proof.proto's Fee)
+  Fee bridge_fee = 4;              // Transitive use: 'Fee' is defined in proof.proto via common.proto
 }
 
 // NEW: Batch transfer for efficiency and cost reduction
@@ -96,7 +55,7 @@ message ContractCallMetadata {
 // ENHANCED: StateQuery with metadata
 message StateQuery {
   bytes storage_key = 1;   // Key to query in destination chain state
-  uibc.v1.ProofType proof_type = 2; // What kind of proof is needed
+  ProofType proof_type = 2; // Transitive use: 'ProofType' is defined in proof.proto via common.proto
   
   // NEW: Query metadata for optimization
   StateQueryMetadata metadata = 3;
@@ -125,14 +84,14 @@ message Acknowledgment {
 message AckMetadata {
   uint64 processed_at = 1;          // When the original message was processed
   uint64 gas_used = 2;              // Gas consumed during processing
-  uibc.v1.Fee actual_fee = 3;       // Actual fee charged (using proof.proto's Fee)
+  Fee actual_fee = 3;               // Transitive use: 'Fee' is defined in proof.proto via common.proto
   bytes relayer_address = 4;        // Address of relayer who processed the message
 }
 
 // ENHANCED: Error with context for debugging
 message Error {
   bytes original_message_id = 1; // 32-byte hash
-  uibc.v1.ErrorType error_type = 2;
+  ErrorType error_type = 2;      // Transitive use: 'ErrorType' is defined in proof.proto via common.proto
   string description = 3;
   
   // NEW: Error context for better debugging
@@ -145,31 +104,6 @@ message ErrorContext {
   string failed_at_chain = 2;       // Chain where error occurred
   bytes failed_step = 3;            // Which processing step failed
   bool retryable = 4;               // Whether this error is retryable
-}
-
-enum ProofType {
-  PROOF_TYPE_UNSPECIFIED = 0;
-  PROOF_TYPE_MERKLE_INCLUSION = 1;
-  PROOF_TYPE_MERKLE_EXCLUSION = 2;
-  PROOF_TYPE_STATE_TRANSITION = 3;
-  PROOF_TYPE_EXECUTION_RESULT = 4;
-  PROOF_TYPE_VALIDATOR_SET = 5;      // NEW: For validator set changes
-  PROOF_TYPE_CONSENSUS = 6;          // NEW: For consensus-related proofs
-}
-
-enum ErrorType {
-  ERROR_TYPE_UNSPECIFIED = 0;
-  ERROR_TYPE_TIMEOUT = 1;
-  ERROR_TYPE_INVALID_DESTINATION = 2;
-  ERROR_TYPE_INSUFFICIENT_FEES = 3;
-  ERROR_TYPE_EXECUTION_FAILED = 4;
-  ERROR_TYPE_PROOF_VERIFICATION_FAILED = 5;
-  ERROR_TYPE_UNSUPPORTED_MESSAGE_TYPE = 6;
-  ERROR_TYPE_INSUFFICIENT_BALANCE = 7;    // NEW: Sender lacks funds
-  ERROR_TYPE_CONTRACT_NOT_FOUND = 8;      // NEW: Target contract doesn't exist
-  ERROR_TYPE_SLASHING_CONDITION_MET = 9;  // NEW: Relayer slashing triggered
-  ERROR_TYPE_CHANNEL_CLOSED = 10;         // NEW: IBC channel is closed
-  ERROR_TYPE_RATE_LIMITED = 11;           // NEW: Too many messages from sender
 }
 
 // Relayer Economics & Assignment
@@ -186,7 +120,7 @@ message RelayerAssignment {
 
 // NEW: Relayer bonding system for security
 message RelayerBond {
-  uibc.v1.Fee minimum_bond = 1;     // Base bond requirement (using proof.proto's Fee)
+  Fee minimum_bond = 1;             // Transitive use: 'Fee' is defined in proof.proto via common.proto
   float value_multiplier = 2;       // Additional bond based on message value (e.g., 0.1 = 10%)
   uint64 lock_period_seconds = 3;   // How long bond is locked after message
   repeated SlashingCondition slashing_conditions = 4;
@@ -227,11 +161,11 @@ enum SelectionMethod {
 }
 
 message EconomicParameters {
-  uibc.v1.Fee estimated_value = 1;
+  Fee estimated_value = 1;          // Transitive use: 'Fee' is defined in proof.proto via common.proto
   Priority priority = 2;
-  uibc.v1.Fee max_total_fee = 3;
+  Fee max_total_fee = 3;            // Transitive use: 'Fee' is defined in proof.proto via common.proto
   FeePayment fee_payment = 4;
-  uibc.v1.Fee timeout_compensation = 5;
+  Fee timeout_compensation = 5;     // Transitive use: 'Fee' is defined in proof.proto via common.proto
   
   // NEW: Advanced economic parameters for complex scenarios
   IncentiveParameters incentives = 6;
@@ -239,8 +173,8 @@ message EconomicParameters {
 
 // NEW: Incentive parameters for user loyalty and volume discounts
 message IncentiveParameters {
-  uibc.v1.Fee early_completion_bonus = 1;   // Bonus for completing before deadline
-  uibc.v1.Fee volume_discount = 2;          // Discount for high-volume users
+  Fee early_completion_bonus = 1;   // Transitive use: 'Fee' is defined in proof.proto via common.proto
+  Fee volume_discount = 2;          // Transitive use: 'Fee' is defined in proof.proto via common.proto
   string loyalty_program_id = 3;    // Loyalty program membership
   repeated string referral_codes = 4; // Referral codes for fee discounts
 }
@@ -265,7 +199,7 @@ message FeePayment {
 }
 
 message PrepaidFees {
-  repeated uibc.v1.Fee fees_paid = 1;
+  repeated Fee fees_paid = 1;       // Transitive use: 'Fee' is defined in proof.proto via common.proto
   bytes payment_tx_hash = 2; // 32-byte hash
   uint64 paid_at_height = 3;        // NEW: Block height when payment was made
 }
@@ -285,7 +219,7 @@ message RelayerAdvancedFees {
 message SubsidizedFees {
   string subsidy_program_id = 1;
   bytes authorization_signature = 2; // NEW: Signature authorizing subsidy
-  uibc.v1.Fee subsidy_amount = 3;   // NEW: Amount of subsidy applied
+  Fee subsidy_amount = 3;           // Transitive use: 'Fee' is defined in proof.proto via common.proto
 }
 
 // NEW: Escrow-based fee payment for complex scenarios
