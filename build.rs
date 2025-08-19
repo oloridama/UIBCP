@@ -85,7 +85,6 @@ fn main() -> Result<()> {
         "proto/uibc/v1/common.proto",
         "proto/uibc/v1/proof.proto",
         "proto/uibc/v1/message.proto",
-        "proto/uibc/v1/adapter.proto",
         "proto/uibc/ibc/v1/compatibility.proto",
         "proto/uibc/ibc/v1/ics20.proto",
         "proto/uibc/ibc/extensions/evm.proto",
