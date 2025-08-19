@@ -1,6 +1,26 @@
 syntax = "proto3";
 package uibc.v1;
 
+enum ProofType {
+  PROOF_TYPE_UNSPECIFIED = 0;
+  PROOF_TYPE_ICS23 = 1;
+  PROOF_TYPE_LIGHT_CLIENT = 2;
+  PROOF_TYPE_ZK = 3;
+  PROOF_TYPE_OPTIMISTIC = 4;
+  PROOF_TYPE_COMMITTEE = 5;
+  PROOF_TYPE_NONE = 6;
+}
+
+enum ErrorType {
+  ERROR_TYPE_UNSPECIFIED = 0;
+  ERROR_TYPE_TIMEOUT = 1;
+  ERROR_TYPE_INVALID_PROOF = 2;
+  ERROR_TYPE_INSUFFICIENT_FEE = 3;
+  ERROR_TYPE_CHAIN_UNREACHABLE = 4;
+  ERROR_TYPE_MESSAGE_EXPIRED = 5;
+  ERROR_TYPE_VALIDATION_FAILED = 6;
+}
+
 // COMPLETED: Missing ProofRequirement definition
 message ProofRequirement {
   oneof requirement {
