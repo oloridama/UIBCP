@@ -154,8 +154,5 @@ message NextSequenceReceive {
   uint64 next_sequence_receive = 3;
 }
 
-// Extend UniversalMessage to include IbcCompatibilityData
-// Note: This extends the message defined in uibc/v1/message.proto
-extend uibc.v1.UniversalMessage {
-  IbcCompatibilityData ibc_data = 40;
-}
+// No extension needed - IbcCompatibilityData is now a regular field
+// in UniversalMessage defined in uibc/v1/message.proto
