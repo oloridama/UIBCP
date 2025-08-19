@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package uibc.v1;
 
+import "uibc/v1/proof.proto";
 import "uibc/v1/common.proto";
+import "uibc/ibc/v1/compatibility.proto";
 
 // ENHANCED: TokenTransfer with string amounts for large numbers (DeFi compatibility)
 message TokenTransfer {
