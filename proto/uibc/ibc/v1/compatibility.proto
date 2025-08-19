@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package uibc.ibc.v1;
 
-import "uibc/v1/common.proto";
-import "uibc/v1/message.proto";
+// FIXED: Use fully qualified names to avoid import resolution issues
+// Import order matters for protobuf resolution
 
-// Extends UniversalMessage.ibc_data field
+// IBC compatibility data structure
 message IbcCompatibilityData {
   // IBC Packet Fields
   uint64 sequence = 1;
@@ -14,11 +14,30 @@ message IbcCompatibilityData {
   string destination_port = 4;
   string destination_channel = 5;
 
-  // Timeout Handling
+  // Timeout Handling - using inline Height definition to avoid import issues
   oneof timeout {
-    Height timeout_height = 10;
+    IbcHeight timeout_height = 10;      // Using local Height definition
     uint64 timeout_timestamp = 11;
   }
+
+  // ICS-20 Token Transfer Extensions
+  FungibleTokenPacket token_data = 12;
+  
+  // Other IBC application data
+  bytes ics27_data = 13;                // Interchain accounts
+  bytes custom_app_data = 14;           // For custom IBC applications
+  
+  // Connection and client information for verification
+  ConnectionInfo connection_info = 15;
+  ClientInfo client_info = 16;
+}
+
+// Local Height definition to avoid import issues
+// Identical to uibc.v1.Height but defined locally
+message IbcHeight {
+  uint64 revision_number = 1;
+  uint64 revision_height = 2;
+}
 
   // ICS-20 Token Transfer Extensions
   FungibleTokenPacket token_data = 12;  // ENHANCED: Made this a proper message field
@@ -69,11 +88,11 @@ enum ConnectionState {
   CONNECTION_STATE_OPEN = 3;
 }
 
-// NEW: Client information for light client verification
+// Client information for light client verification
 message ClientInfo {
   string client_id = 1;
   string client_type = 2;             // "07-tendermint", "10-grandpa", etc.
-  Height latest_height = 3;
+  IbcHeight latest_height = 3;        // Using local IbcHeight definition
   bytes consensus_state = 4;          // Serialized consensus state
   bytes client_state = 5;             // Serialized client state
   bool frozen = 6;                    // Whether client is frozen
@@ -136,6 +155,7 @@ message NextSequenceReceive {
 }
 
 // Extend UniversalMessage to include IbcCompatibilityData
+// Note: This extends the message defined in uibc/v1/message.proto
 extend uibc.v1.UniversalMessage {
   IbcCompatibilityData ibc_data = 40;
 }
