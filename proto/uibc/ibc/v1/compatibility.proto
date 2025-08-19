@@ -1,13 +1,8 @@
 syntax = "proto3";
+
 package uibc.ibc.v1;
 
-import "uibc/v1/message.proto";
-
-// COMPLETED: Missing Height definition (critical for IBC compatibility)
-message Height {
-  uint64 revision_number = 1;
-  uint64 revision_height = 2;
-}
+import "uibc/v1/common.proto";
 
 // Extends UniversalMessage.ibc_data field
 message IbcCompatibilityData {
@@ -137,4 +132,9 @@ message NextSequenceReceive {
   string port_id = 1;
   string channel_id = 2;
   uint64 next_sequence_receive = 3;
+}
+
+// Extend UniversalMessage to include IbcCompatibilityData
+extend uibc.v1.UniversalMessage {
+  IbcCompatibilityData ibc_data = 40;
 }
