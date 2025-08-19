@@ -13,8 +13,12 @@ package uibc.v1;
 import "uibc/v1/common.proto";
 import "uibc/v1/proof.proto";
 
+// Forward declaration for IBC compatibility
+// This will be defined in uibc/ibc/v1/compatibility.proto
+message IbcCompatibilityData;
+
 // Code generation options for multiple languages
-option go_package = "github.com/oloridama/UIBCP/proto/uibc/v1";
+option go_package = "github.com/oloidama/UIBCP/proto/uibc/v1";
 option java_package = "com.oloridama.uibcp.v1";
 option java_multiple_files = true;
 option java_outer_classname = "MessageProto";
@@ -93,13 +97,10 @@ message UniversalMessage {
   // Advanced economic parameters for complex scenarios
   EconomicParameters economic_parameters = 32;
 
-  // Extension ranges for protocol extensions (e.g., IBC compatibility)
-  // Best Practice: Reserve extension ranges for future protocol extensions
-  // Range 40-99 reserved for IBC compatibility extensions
-  extensions 40 to 99;
-  
-  // Range 100-199 reserved for custom protocol extensions
-  extensions 100 to 199;
+  // IBC Compatibility Data (replaces extension approach)
+  // Best Practice: Use regular fields instead of extensions in proto3
+  // This field is populated by IBC-compatible chains for routing context
+  IbcCompatibilityData ibc_data = 40;
 }
 
 // ====================
