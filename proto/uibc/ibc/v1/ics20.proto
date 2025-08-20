@@ -1,9 +1,24 @@
-Syntax = "proto3";
+syntax = "proto3";
+
 package uibc.ibc.v1;
 
-// Extends IbcCompatibilityData
+// Code generation options for consistency
+option go_package = "github.com/oloridama/UIBCP/proto/uibc/ibc/v1";
+option java_package = "com.oloridama.uibcp.ibc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "Ics20Proto";
+option csharp_namespace = "Uibcp.Ibc.V1";
+
+// ICS-20 token transfer extension data
 message ICS20Extension {
-string base_denom = 1; // Original denom before IBC hops
-repeated string trace = 2; // ["transfer", "channel-1", ...]
-string memo = 3; // Custom metadata
+  // Original denomination before any IBC hops
+  // Example: "uatom" before becoming "ibc/ABC123..."
+  string base_denom = 1;
+  
+  // IBC trace path showing route across chains
+  // Example: ["transfer", "channel-1", "transfer", "channel-5"]
+  repeated string trace = 2;
+  
+  // Custom metadata or memo for the transfer
+  string memo = 3;
 }
