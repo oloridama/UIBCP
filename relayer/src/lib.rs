@@ -2,7 +2,7 @@
 
 use prost::Message;
 use validator::Validate;
-use UIBCP::relayer::src::zk::circuit::{Ics23Prover, PublicInputs, Ics23Air, bytes_to_field, POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS, MERKLE_LEVELS, TRACE_WIDTH, TOTAL_STEPS};
+use relayer::src::zk::circuit::{Ics23Prover, PublicInputs, Ics23Air, bytes_to_field, POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS, MERKLE_LEVELS, TRACE_WIDTH, TOTAL_STEPS};
 use winter_crypto::hashers::poseidon::{Poseidon, PoseidonRounds};
 use winterfell::ProofOptions;
 use winter_math::fields::f252::BaseElement;
