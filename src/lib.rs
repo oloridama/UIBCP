@@ -6,6 +6,7 @@ use relayer::src::zk::circuit::{Ics23Prover, PublicInputs, Ics23Air, bytes_to_fi
 use winter_crypto::hashers::poseidon::{Poseidon, PoseidonRounds};
 use winterfell::ProofOptions;
 use winter_math::fields::f252::BaseElement;
+use winter_air::AirContext;
 
 // Include generated Protobuf structs
 include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
