@@ -17,56 +17,56 @@ fn main() -> Result<()> {
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
     
     // Add custom derives for key messages from message.proto
-    config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.MessageFees", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.Fee", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.FeeDistribution", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.PerformanceBonus", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.ChainEndpoint", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.TokenTransfer", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.BatchTransfer", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.ContractCall", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.StateQuery", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.Acknowledgment", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.Error", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.RelayerAssignment", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.EconomicParameters", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.StateCheckpoint", "#[derive(Clone, PartialEq, prost::Message)]");
+    config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.MessageFees", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.Fee", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.FeeDistribution", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.PerformanceBonus", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.ChainEndpoint", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.TokenTransfer", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.BatchTransfer", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.ContractCall", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.StateQuery", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.Acknowledgment", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.Error", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.RelayerAssignment", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.EconomicParameters", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.StateCheckpoint", "#[derive(Clone, PartialEq)]");
     
     // Add custom derives for key messages from proof.proto
-    config.message_attribute("uibc.v1.ProofRequirement", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.LightClientProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.ZkProofRequirement", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.OptimisticProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.CommitteeProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.NoProofRequired", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.UniversalProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.ProofMetadata", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.MerkleProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.ZkProof", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.OptimisticProofData", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.CommitteeSignatures", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.v1.Signature", "#[derive(Clone, PartialEq, prost::Message)]");
+    config.message_attribute("uibc.v1.ProofRequirement", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.LightClientProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.ZkProofRequirement", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.OptimisticProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.CommitteeProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.NoProofRequired", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.UniversalProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.ProofMetadata", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.MerkleProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.ZkProof", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.OptimisticProofData", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.CommitteeSignatures", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.v1.Signature", "#[derive(Clone, PartialEq)]");
     
     // Add custom derives for key messages from compatibility.proto
-    config.message_attribute("uibc.ibc.v1.Height", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.IbcCompatibilityData", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.FungibleTokenPacket", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.TokenMetadata", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.ConnectionInfo", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.ClientInfo", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.ChannelInfo", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.IbcAcknowledgement", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.PacketCommitment", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.PacketReceipt", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.v1.NextSequenceReceive", "#[derive(Clone, PartialEq, prost::Message)]");
+    config.message_attribute("uibc.ibc.v1.Height", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.IbcCompatibilityData", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.FungibleTokenPacket", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.TokenMetadata", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.ConnectionInfo", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.ClientInfo", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.ChannelInfo", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.IbcAcknowledgement", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.PacketCommitment", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.PacketReceipt", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.v1.NextSequenceReceive", "#[derive(Clone, PartialEq)]");
     
     // Add custom derives for key messages from evm.proto
-    config.message_attribute("uibc.ibc.extensions.EVMExtension", "#[derive(Clone, PartialEq, prost::Message)]");
-    config.message_attribute("uibc.ibc.extensions.AccessTuple", "#[derive(Clone, PartialEq, prost::Message)]");
+    config.message_attribute("uibc.ibc.extensions.EVMExtension", "#[derive(Clone, PartialEq)]");
+    config.message_attribute("uibc.ibc.extensions.AccessTuple", "#[derive(Clone, PartialEq)]");
     
     // Assume Ics23Proof from proof.proto (using ibc.core.commitment.merkle.proto)
-    config.message_attribute("uibc.v1.Ics23Proof", "#[derive(Clone, PartialEq, prost::Message)]");
+    config.message_attribute("uibc.v1.Ics23Proof", "#[derive(Clone, PartialEq)]");
     
     // Add validation attributes
     config.field_attribute("uibc.v1.UniversalMessage.message_id", "#[validate(length(equal = 32))]");
