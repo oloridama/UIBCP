@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/// @title IPoseidonBN254
+/// @notice Interface for the Poseidon hash function library over the BN254 curve.
+///         This interface allows other contracts to interact with the Poseidon
+///         hashing logic.
 interface IPoseidonBN254 {
-    /// @notice Computes a Poseidon hash for a 3-element input array.
-    /// @param input The input array of 3 uint256 values.
-    /// @return The resulting hash value.
-    function poseidon(uint256[3] memory input) external pure returns (uint256);
-
-    /// @notice Computes a Poseidon hash for a variable-length input array (batched hashing).
-    /// @param input The input array of uint256 values (length must be a multiple of 3 for full state).
-    /// @return The resulting hash value.
-    function poseidonBatch(uint256[] memory input) external pure returns (uint256);
-
-    /// @notice Retrieves the modulus used in Poseidon computations (BN254 scalar field).
-    /// @return The modulus value.
-    function getModulus() external pure returns (uint256);
+    /// @dev Computes the Poseidon hash of a single state (width-3) input.
+    /// @param input The array of three uint256 elements to be hashed.
+    /// @return The resulting 256-bit hash.
+    function hash(uint256[3] calldata input) external pure returns (uint256);
 }
