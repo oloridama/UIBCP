@@ -11,12 +11,8 @@ use winter_air::AirContext;
 // Include generated Protobuf structs
 include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
 
-pub mod relayer {
-    pub mod src {
-        pub mod zk {
-            pub mod circuit;
-        }
-    }
+pub mod zk {
+    pub mod circuit;
 }
 
 // Relayer Logic
