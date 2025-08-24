@@ -28,7 +28,7 @@ pub mod zk {
 pub fn generate_zkp(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics23Proof, root: [BaseElement; 4], zk_req: Option<uibc::v1::ZkProofRequirement>, ibc_data: Option<uibc::ibc::v1::IbcCompatibilityData>, evm_ext: Option<uibc::ibc::extensions::EVMExtension>) -> Result<Vec<u8>, &'static str> {
     let air = Ics23Air {
         context: AirContext::new(TRACE_WIDTH, TOTAL_STEPS),
-        poseidon: PoseidonRounds::new(),
+        poseidon: Poseidon::new(),
         pub_inputs: PublicInputs {
             state_root: root,
             sequence: ibc_data.map_or(BaseElement::ZERO, |d| BaseElement::new(d.sequence % MODULUS as u64)),
