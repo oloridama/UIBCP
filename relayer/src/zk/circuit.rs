@@ -260,7 +260,8 @@ impl Ics23StarkProver {
         let pub_inputs = self.extract_public_inputs(message, &proof_data)?;
         let trace = self.build_trace(&proof_data, &pub_inputs)?;
 
-        let prover = winterfell::DefaultProver::new(self.options.clone());
+        let prover = Ics23StarkProver::new(self.options.clone());
+        let zk_proof = prover.generate_proof(message, ics23_proof)?;
         let trace_info = TraceInfo::new(TRACE_WIDTH, TOTAL_STEPS);
         let air = Ics23Air::new(trace_info, pub_inputs.clone(), self.options.clone());
         let stark_proof = prover
@@ -516,9 +517,9 @@ impl Ics23StarkProver {
     pub fn estimate_proof_cost(&self, message: &UniversalMessage) -> Result<u64> {
         let base_cost = 10_000u64;
         let complexity_multiplier = match &message.payload {
-            Some(crate::proto::uibc::v1::universal_message::Payload::TokenTransfer(_)) => 1.0,
-            Some(crate::proto::uibc::v1::universal_message::Payload::ContractCall(_)) => 1.5,
-            Some(crate::proto::uibc::v1::universal_message::Payload::BatchTransfer(batch)) => {
+            Some(crate::uibc::v1::universal_message::Payload::TokenTransfer(_)) => 1.0,
+            Some(crate::uibc::v1::universal_message::Payload::ContractCall(_)) => 1.5,
+            Some(crate::uibc::v1::universal_message::Payload::BatchTransfer(batch)) => {
                 1.0 + (batch.transfers.len() as f64 * 0.1)
             },
             _ => 1.2,
