@@ -396,10 +396,12 @@ impl Ics23StarkProver {
         Ok(trace)
     }
 
-    fn bytes_to_field(&self, bytes: &[u8]) -> Result<BaseElement> {
+    fn bytes_to_field(&self, bytes: &prost::bytes::Bytes) -> Result<BaseElement> {
         if bytes.is_empty() {
             return Ok(BaseElement::ZERO);
         }
+        
+        // Logic for long byte arrays (more than 31 bytes)
         if bytes.len() > 31 {
             let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
             let chunks: Vec<BaseElement> = bytes
@@ -412,7 +414,7 @@ impl Ics23StarkProver {
                 .collect();
             let digest = hasher.hash_elements(&chunks);
             BaseElement::from_bytes(&digest[0..32]).map_err(|e| anyhow!("Invalid bytes: {}", e))
-        } else {
+        } else { // Logic for short byte arrays (31 bytes or less)
             let mut padded = [0u8; 32];
             bytes.iter().enumerate().for_each(|(i, &b)| padded[i] = b);
             BaseElement::from_bytes(&padded).map_err(|e| anyhow!("Invalid bytes: {}", e))
