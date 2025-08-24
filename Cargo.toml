@@ -4,18 +4,29 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-winterfell = "0.6"
-winter-air = "0.6"
-winter-math = "0.6"
-winter-crypto = "0.6"
-prost = "0.11"
-serde = { version = "1.0", features = ["derive"] }
-validator = { version = "0.16", features = ["derive"] }
+# Winterfell STARK Prover dependencies
+winter-air = { version = "0.9.0", default-features = false }
+winter-crypto = { version = "0.9.0", default-features = false }
+winter-math = { version = "0.9.0", default-features = false }
+winterfell = { version = "0.9.0", default-features = false }
+
+# For ABI encoding
 ethabi = "17.2.0"
+
+# For error handling
 anyhow = "1.0.83"
 
+# For Protocol Buffers (Prost) and Serde compatibility
+prost = "0.12"
+prost-serde-bytes = "0.1.0"
+serde = { version = "1.0.219", features = ["derive"] }
+
+# For validation attributes in build.rs
+validator = { version = "0.18", features = ["derive"] }
+
 [build-dependencies]
-prost-build = "0.11"
+# This crate is only used by your build.rs script
+prost-build = "0.12"
 
 [lib]
 name = "uibcp"
