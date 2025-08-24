@@ -1,7 +1,7 @@
 // relayer/src/zk/circuit.rs - Refactored ZK Circuit for UIBCP
 use winter_air::{Air, AirContext, Assertion, EvaluationFrame, TraceInfo, Matrix};
 use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
-use winter_crypto::{hashers::poseidon::Poseidon, Hasher};
+use winter_crypto::hashers::poseidon::Poseidon;
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use anyhow::{Result, anyhow};
 use crate::uibc::v1::{UniversalMessage, ZkProof};
