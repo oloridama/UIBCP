@@ -118,23 +118,23 @@ fn generate_helper_code(out_dir: &Path) -> Result<()> {
     // Add prost_serde_bytes helper module
     writeln!(file, r#"
         pub mod prost_serde_bytes {{{{
-            use serde::{de, Deserialize, Deserializer, Serializer};
+            use serde::{{de, Deserialize, Deserializer, Serializer}};
             use prost::bytes::Bytes;
 
             pub fn serialize<S>(bytes: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,
-            {
+            {{
                 serializer.serialize_bytes(bytes)
-            }
+            }}
 
             pub fn deserialize<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
             where
                 D: Deserializer<'de>,
-            {
+            {{
                 let vec: Vec<u8> = de::Deserialize::deserialize(deserializer)?;
                 Ok(Bytes::from(vec))
-            }
+            }}
         }}}}
     "#)?;
 
