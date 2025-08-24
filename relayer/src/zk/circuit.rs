@@ -4,7 +4,7 @@ use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
 use winter_crypto::hashers::poseidon::Poseidon;
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use anyhow::{Result, anyhow};
-use crate::uibc::v1::{UniversalMessage, ZkProof};
+use crate::proto::v1::{UniversalMessage, ZkProof};
 use crate::adapters::chain_adapter::InclusionProof;
 use crate::adapters::evm::EVMAdapter;
 use ethabi::{encode, Token};
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_generate_proof() {
-        let hasher = winter_crypto::hashers::Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
+        let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
         let options = ProofOptions::new(
             32,
             8,
