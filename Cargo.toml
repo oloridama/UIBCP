@@ -18,7 +18,7 @@ anyhow = "1.0.83"
 
 # For Protocol Buffers (Prost) and Serde compatibility
 prost = "0.12"
-serde-bytes = "1.0"
+serde_bytes = "1.0"
 serde = { version = "1.0.219", features = ["derive"] }
 
 # For validation attributes in build.rs
