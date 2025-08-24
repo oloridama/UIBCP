@@ -9,11 +9,14 @@ use winter_math::fields::f252::BaseElement;
 use winter_air::AirContext;
 use crate::uibc::v1::{UniversalMessage, ZkProof}; 
 use crate::adapters::chain_adapter::InclusionProof; 
-
-pub mod uibc;        
-pub mod adapters;
+        
 // Include generated Protobuf structs
 include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
+
+pub mod adapters {
+    pub mod chain_adapter;
+    // If you have other adapters, add them here as well
+}
 
 pub mod zk {
     pub mod circuit;
