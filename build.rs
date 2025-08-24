@@ -12,9 +12,14 @@ fn main() -> Result<()> {
     // Enable bytes for performance
     config.bytes(&["."]);
     
-    // Add serde derives
+    // Add serde derives and configure serialization for 'bytes' fields
     config.type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]");
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
+
+    // Add specific field attributes for bytes serialization
+    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"prost_serde_bytes\")]");
     
     // Add custom derives for key messages from message.proto
     config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone)]");
@@ -73,9 +78,6 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
     
-    // Enable optional support
-    //config.enable_type_names();
-    
     // Set output directory
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     config.out_dir(&out_dir);
@@ -110,9 +112,31 @@ fn generate_helper_code(out_dir: &Path) -> Result<()> {
     writeln!(file, "use prost::Message;")?;
     writeln!(file, "use prost::bytes::Bytes;")?;
     writeln!(file, "use serde;")?;
-    writeln!(file, "use serde_bytes;")?;
     writeln!(file, "use validator::Validate;")?;
     
+    // Add prost_serde_bytes helper module
+    writeln!(file, r#"
+        pub mod prost_serde_bytes {{
+            use serde::{de, Deserialize, Deserializer, Serializer};
+            use prost::bytes::Bytes;
+
+            pub fn serialize<S>(bytes: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.serialize_bytes(bytes)
+            }
+
+            pub fn deserialize<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let vec: Vec<u8> = de::Deserialize::deserialize(deserializer)?;
+                Ok(Bytes::from(vec))
+            }
+        }}
+    "#)?;
+
     // Define IbcMessage trait
     writeln!(file, r#"
 pub trait IbcMessage {{
