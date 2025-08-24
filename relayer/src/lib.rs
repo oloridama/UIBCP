@@ -11,7 +11,9 @@ use crate::uibc::v1::{UniversalMessage, ZkProof};
 use crate::adapters::chain_adapter::InclusionProof; 
         
 // Include generated Protobuf structs
-include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
+pub mod uibc {
+    include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
+}
 
 pub mod adapters {
     pub mod chain_adapter;
