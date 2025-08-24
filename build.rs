@@ -146,33 +146,33 @@ pub trait IbcMessage {{{{
 "#)?;
     
     // Implement IbcMessage for relevant messages
-    writeln!(file, "impl IbcMessage for super::uibc::v1::UniversalMessage {{")?;
-    writeln!(file, "    fn canonical_encode(&self) -> Vec<u8> {{")?;
+    writeln!(file, "impl IbcMessage for super::uibc::v1::UniversalMessage {{{{")?;
+    writeln!(file, "    fn canonical_encode(&self) -> Vec<u8> {{{{")?;
     writeln!(file, "        self.encode_to_vec()")?;
-    writeln!(file, "    }}")?;
-    writeln!(file, "}}")?;
+    writeln!(file, "    }}}}")?;
+    writeln!(file, "}}}}")?;
     
-    writeln!(file, "impl IbcMessage for super::uibc::v1::Ics23Proof {{")?;
-    writeln!(file, "    fn canonical_encode(&self) -> Vec<u8> {{")?;
+    writeln!(file, "impl IbcMessage for super::uibc::v1::Ics23Proof {{{{")?;
+    writeln!(file, "    fn canonical_encode(&self) -> Vec<u8> {{{{")?;
     writeln!(file, "        self.encode_to_vec()")?;
-    writeln!(file, "    }}")?;
-    writeln!(file, "}}")?;
+    writeln!(file, "    }}}}")?;
+    writeln!(file, "}}}}")?;
     
     // Re-export generated modules
     writeln!(file, r#"
-pub mod uibc {{
-    pub mod v1 {{
+pub mod uibc {{{{
+    pub mod v1 {{{{
         include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
-    }}
-    pub mod ibc {{
-        pub mod v1 {{
+    }}}}
+    pub mod ibc {{{{
+        pub mod v1 {{{{
             include!(concat!(env!("OUT_DIR"), "/uibc.ibc.v1.rs"));
-        }}
-        pub mod extensions {{
+        }}}}
+        pub mod extensions {{{{
             include!(concat!(env!("OUT_DIR"), "/uibc.ibc.extensions.rs"));
-        }}
-    }}
-}}
+        }}}}
+    }}}}
+}}}}
 "#)?;
 
     Ok(())
