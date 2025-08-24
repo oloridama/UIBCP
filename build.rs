@@ -117,7 +117,7 @@ fn generate_helper_code(out_dir: &Path) -> Result<()> {
     
     // Add prost_serde_bytes helper module
     writeln!(file, r#"
-        pub mod prost_serde_bytes {{
+        pub mod prost_serde_bytes {{{{
             use serde::{de, Deserialize, Deserializer, Serializer};
             use prost::bytes::Bytes;
 
@@ -135,14 +135,14 @@ fn generate_helper_code(out_dir: &Path) -> Result<()> {
                 let vec: Vec<u8> = de::Deserialize::deserialize(deserializer)?;
                 Ok(Bytes::from(vec))
             }
-        }}
+        }}}}
     "#)?;
 
     // Define IbcMessage trait
     writeln!(file, r#"
-pub trait IbcMessage {{
+pub trait IbcMessage {{{{
     fn canonical_encode(&self) -> Vec<u8>;
-}}
+}}}}
 "#)?;
     
     // Implement IbcMessage for relevant messages
