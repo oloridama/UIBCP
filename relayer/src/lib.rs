@@ -7,7 +7,7 @@ use winter_crypto::hashers::poseidon::Poseidon;
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use winter_math::fields::f252::BaseElement;
 use winter_air::AirContext;
-use crate::uibc::v1::{UniversalMessage, ZkProof}; 
+use crate::proto::v1::{UniversalMessage, ZkProof}; 
 use crate::adapters::chain_adapter::InclusionProof; 
         
 // Include generated Protobuf structs
