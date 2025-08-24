@@ -16,10 +16,11 @@ fn main() -> Result<()> {
     config.type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]");
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
 
-    // Add specific field attributes for bytes serialization
+    // Add specific and generic field attributes for bytes serialization
     config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"prost_serde_bytes\")]");
     config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"prost_serde_bytes\")]");
     config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("*.bytes", "#[serde(with = \"prost_serde_bytes\")]");
     
     // Add custom derives for key messages from message.proto
     config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone)]");
