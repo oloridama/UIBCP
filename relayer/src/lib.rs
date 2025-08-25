@@ -1,5 +1,4 @@
 // relayer/src/lib.rs
-use validator::Validate;
 use winter_air::{AirContext, TraceInfo};
 use winter_crypto::Poseidon; // Corrected path
 use winter_math::f252::BaseElement; // Corrected path
@@ -56,7 +55,7 @@ pub fn generate_zkp(
 }
 
 // Message Processing
-pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics23Proof, root: [BaseElement; 4]) -> Result<Vec<u8>, &'static str> {
+pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics23Proof, root: [BaseElement; 4]) -> Result<Vec<u8>> {
     // Validate message
     if let Err(e) = message.validate() {
         return Err("Message validation failed");
