@@ -27,14 +27,9 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // Compile the specified proto files from the proto/ directory
+    // Now we only compile the top-level uibc.proto, which should import the others.
     let proto_files = &[
-        "uibc/v1/common.proto",
-        "uibc/v1/proof.proto",
-        "uibc/v1/message.proto",
-        "uibc/ibc/v1/compatibility.proto",
-        "uibc/ibc/v1/ics20.proto",
-        "uibc/ibc/extensions/evm.proto",
+        "uibc.proto",
     ];
     let include_dirs = &["proto"];
 
