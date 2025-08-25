@@ -27,15 +27,12 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // Now we only compile the top-level uibc.proto, which should import the others.
+    // The key change: We use `compile_protos` to generate all the code.
     let proto_files = &[
-        "uibc.proto",
+        "uibc/v1/uibc.proto", // <-- Corrected path
     ];
     let include_dirs = &["proto"];
 
-    // The key change: We use `compile_protos` to generate all the code.
-    // The output file will be a single file named `uibc.rs` (or similar)
-    // in the `OUT_DIR`.
     config.compile_protos(proto_files, include_dirs)?;
 
     Ok(())
