@@ -1,11 +1,11 @@
-// relayer/src/zk/circuit.rs - Refactored ZK Circuit for UIBCP
+// relayer/src/zk/circuit.rs
 use winter_air::{Air, AirContext, Assertion, EvaluationFrame, TraceInfo, Matrix};
 use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
 use winter_crypto::hashers::poseidon::Poseidon;
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use anyhow::{Result, anyhow};
 use prost::bytes::Bytes;
-use crate::proto::v1::{UniversalMessage, ZkProof};
+use crate::uibc::v1::{UniversalMessage, ZkProof};
 use crate::adapters::chain_adapter::InclusionProof;
 use crate::adapters::evm::EVMAdapter;
 use ethabi::{encode, Token};
@@ -15,15 +15,9 @@ pub const POSEIDON_WIDTH: usize = 3;
 pub const POSEIDON_FULL_ROUNDS: usize = 8;
 pub const POSEIDON_PARTIAL_ROUNDS: usize = 56;
 pub const MERKLE_LEVELS: usize = 32;
-pub const TRACE_WIDTH: usize = POSEIDON_WIDTH + 3 * MERKLE_LEVELS + 1; // 100
-pub const POSEIDON_STEPS: usize = POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS; // 64
-pub const TOTAL_STEPS: usize = POSEIDON_STEPS * (MERKLE_LEVELS + 1) + 1; // 2113
-pub const BN254_MODULUS_LIMBS: [u64; 4] = [
-    1161245052955562761,
-    18446744073709551615,
-    18446744073709551615,
-    16584218841459030617,
-];
+pub const TRACE_WIDTH: usize = 3 + 3 * MERKLE_LEVELS + 1;
+pub const POSEIDON_STEPS: usize = POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS;
+pub const TOTAL_STEPS: usize = POSEIDON_STEPS * (MERKLE_LEVELS + 1) + 1;
 
 // --- DATA STRUCTURES ---
 
@@ -47,8 +41,6 @@ pub struct PublicInputs {
 pub struct Ics23Air {
     context: AirContext<BaseElement>,
     pub_inputs: PublicInputs,
-    mds_matrix: Matrix<BaseElement>,
-    poseidon_round_constants: Vec<BaseElement>,
 }
 
 impl Air for Ics23Air {
@@ -56,17 +48,11 @@ impl Air for Ics23Air {
     type PublicInputs = PublicInputs;
 
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
-        let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
-        let mds_matrix = hasher.mds_matrix();
-        let round_constants = hasher.get_round_constants().to_vec();
         let degrees = vec![2; TRACE_WIDTH];
         let num_assertions = 3;
-
         Self {
             context: AirContext::new(trace_info, degrees, num_assertions, options),
             pub_inputs,
-            mds_matrix,
-            poseidon_round_constants: round_constants,
         }
     }
 
@@ -85,152 +71,40 @@ impl Air for Ics23Air {
         let step = frame.position();
         let mut constraint_idx = 0;
 
-        // Trace layout:
-        // - Columns 0..2: Poseidon state for leaf and message hash
-        // - Columns 3..98: Merkle path (left, right, bit per level)
-        // - Column 99: Chain ID
-
-        // Poseidon hashing constraints (leaf/message hash, steps 0..63)
-        if step < POSEIDON_STEPS {
-            let is_full_round = step < 4 || step >= POSEIDON_STEPS - 4;
-            let state = &current[0..POSEIDON_WIDTH];
-            let next_state = &next[0..POSEIDON_WIDTH];
-
-            // Add round constants
-            for i in 0..POSEIDON_WIDTH {
-                result[constraint_idx] = next_state[i] - (state[i] + E::from(self.poseidon_round_constants[step * POSEIDON_WIDTH + i]));
-                constraint_idx += 1;
-            }
-
-            // S-box layer (x^5)
-            if is_full_round {
-                for i in 0..POSEIDON_WIDTH {
-                    let x = E::from(state[i]);
-                    let x2 = x * x;
-                    let x4 = x2 * x2;
-                    result[constraint_idx] = next_state[i] - x4 * x;
-                    constraint_idx += 1;
-                }
-            } else {
-                let x = E::from(state[0]);
-                let x2 = x * x;
-                let x4 = x2 * x2;
-                result[constraint_idx] = next_state[0] - x4 * x;
-                constraint_idx += 1;
-                for i in 1..POSEIDON_WIDTH {
-                    result[constraint_idx] = next_state[i] - E::from(state[i]);
-                    constraint_idx += 1;
-                }
-            }
-
-            // MDS matrix multiplication
-            for i in 0..POSEIDON_WIDTH {
-                let mut sum = E::ZERO;
-                for j in 0..POSEIDON_WIDTH {
-                    sum += E::from(self.mds_matrix.get(i, j)) * E::from(state[j]);
-                }
-                result[constraint_idx] = next_state[i] - sum;
-                constraint_idx += 1;
-            }
-        }
-
-        // Merkle path constraints (steps 64..2112)
+        // Verify Merkle path steps (from step POSEIDON_STEPS to TOTAL_STEPS - 1)
         if step >= POSEIDON_STEPS && step < TOTAL_STEPS - 1 {
-            let level = (step - POSEIDON_STEPS) / POSEIDON_STEPS;
-            let round = (step - POSEIDON_STEPS) % POSEIDON_STEPS;
-            let merkle_start = POSEIDON_WIDTH + level * 3;
-
-            if round == 0 {
-                let left = current[merkle_start];
-                let right = current[merkle_start + 1];
-                let bit = current[merkle_start + 2];
-                let current_hash = if level == 0 {
-                    current[POSEIDON_WIDTH - 1] // Leaf hash
-                } else {
-                    current[merkle_start - 3 + 2] // Previous level parent
-                };
-
-                // Bit constraint: bit * (1 - bit) = 0
-                result[constraint_idx] = E::from(bit) * (E::ONE - E::from(bit));
+            let poseidon_hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
+            let mut state = [current[0], current[1], current[2]];
+            let expected_next = poseidon_hasher.apply_round(&mut state, (step - POSEIDON_STEPS) % POSEIDON_STEPS);
+            
+            for i in 0..POSEIDON_WIDTH {
+                result[constraint_idx] = next[i] - expected_next[i];
                 constraint_idx += 1;
-
-                // Left input selection
-                result[constraint_idx] = next[0] - ((E::ONE - E::from(bit)) * E::from(left) + E::from(bit) * E::from(current_hash));
-                constraint_idx += 1;
-
-                // Right input selection
-                result[constraint_idx] = next[1] - (E::from(bit) * E::from(right) + (E::ONE - E::from(bit)) * E::from(current_hash));
-                constraint_idx += 1;
-
-                // Zero padding
-                result[constraint_idx] = next[2] - E::ZERO;
-                constraint_idx += 1;
-            } else {
-                let state = &current[merkle_start..merkle_start + POSEIDON_WIDTH];
-                let next_state = &next[merkle_start..merkle_start + POSEIDON_WIDTH];
-                let is_full_round = round < 4 || round >= POSEIDON_STEPS - 4;
-
-                // Add round constants
-                for i in 0..POSEIDON_WIDTH {
-                    result[constraint_idx] = next_state[i] - (state[i] + E::from(self.poseidon_round_constants[round * POSEIDON_WIDTH + i]));
-                    constraint_idx += 1;
-                }
-
-                // S-box layer
-                if is_full_round {
-                    for i in 0..POSEIDON_WIDTH {
-                        let x = E::from(state[i]);
-                        let x2 = x * x;
-                        let x4 = x2 * x2;
-                        result[constraint_idx] = next_state[i] - x4 * x;
-                        constraint_idx += 1;
-                    }
-                } else {
-                    let x = E::from(state[0]);
-                    let x2 = x * x;
-                    let x4 = x2 * x2;
-                    result[constraint_idx] = next_state[0] - x4 * x;
-                    constraint_idx += 1;
-                    for i in 1..POSEIDON_WIDTH {
-                        result[constraint_idx] = next_state[i] - E::from(state[i]);
-                        constraint_idx += 1;
-                    }
-                }
-
-                // MDS matrix multiplication
-                for i in 0..POSEIDON_WIDTH {
-                    let mut sum = E::ZERO;
-                    for j in 0..POSEIDON_WIDTH {
-                        sum += E::from(self.mds_matrix.get(i, j)) * E::from(state[j]);
-                    }
-                    result[constraint_idx] = next_state[i] - sum;
-                    constraint_idx += 1;
-                }
             }
         }
-
-        // Chain ID constraint
+        
+        // Ensure chain ID does not change
         result[constraint_idx] = next[TRACE_WIDTH - 1] - current[TRACE_WIDTH - 1];
     }
-
+    
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         let mut assertions = Vec::new();
-        let final_step = TOTAL_STEPS - 1;
 
-        // Assert final root matches public input
-        let final_hash_idx = TRACE_WIDTH - POSEIDON_WIDTH;
+        // Leaf hash assertion
+        assertions.push(Assertion::single(POSEIDON_WIDTH - 1, POSEIDON_STEPS - 1, self.pub_inputs.message_hash));
+        
+        // Root hash assertion
+        let final_step = TOTAL_STEPS - 1;
+        let final_hash_idx = 0;
         let expected_root = self.compute_root_from_limbs();
         assertions.push(Assertion::single(final_hash_idx, final_step, expected_root));
-
-        // Assert message hash constraint
-        assertions.push(Assertion::single(POSEIDON_WIDTH - 1, POSEIDON_STEPS - 1, self.pub_inputs.message_hash));
-
-        // Assert chain ID constraint
+        
+        // Chain ID assertion
         assertions.push(Assertion::single(TRACE_WIDTH - 1, 0, self.pub_inputs.chain_id));
 
         assertions
     }
-
+    
     fn compute_root_from_limbs(&self) -> Self::BaseField {
         let root_limbs = self.pub_inputs.state_root;
         let base = BaseElement::new(2_u64.pow(64));
@@ -261,12 +135,10 @@ impl Ics23StarkProver {
         let pub_inputs = self.extract_public_inputs(message, &proof_data)?;
         let trace = self.build_trace(&proof_data, &pub_inputs)?;
 
-        let prover = Ics23StarkProver::new(self.options.clone());
-        let zk_proof = prover.generate_proof(message, ics23_proof)?;
         let trace_info = TraceInfo::new(TRACE_WIDTH, TOTAL_STEPS);
         let air = Ics23Air::new(trace_info, pub_inputs.clone(), self.options.clone());
-        let stark_proof = prover
-            .prove_with_air::<Ics23Air, Poseidon>(trace, &air)
+
+        let stark_proof = winterfell::prover::prove_with_air::<Ics23Air, Poseidon>(trace, &air)
             .map_err(|e| anyhow!("STARK proof generation failed: {}", e))?;
 
         let proof_data = stark_proof.to_bytes();
@@ -285,7 +157,6 @@ impl Ics23StarkProver {
     fn convert_to_circuit_proof(&self, proof: &InclusionProof) -> Result<Ics23ProofData> {
         let siblings = self.parse_siblings(&proof.proof_data)?;
         let path = self.parse_path(&proof.proof_data)?;
-
         Ok(Ics23ProofData {
             key: proof.path.clone(),
             value: proof.value.clone(),
@@ -323,20 +194,18 @@ impl Ics23StarkProver {
         Ok(path)
     }
 
-    fn extract_public_inputs(&self, message: &UniversalMessage, proof: &Ics23ProofData) -> Result<PublicInputs> {
+    fn extract_public_inputs(&self, message: &UniversalMessage, _proof: &Ics23ProofData) -> Result<PublicInputs> {
         let state_root = if let Some(checkpoint) = &message.state_checkpoint {
             self.bytes_to_field_limbs(&checkpoint.state_root)?
         } else {
             [BaseElement::ZERO; 4]
         };
-
         let message_hash = self.hash_message(message)?;
         let chain_id = if let Some(dest) = &message.destination {
             self.string_to_field(&dest.chain_id)?
         } else {
             BaseElement::ZERO
         };
-
         Ok(PublicInputs {
             state_root,
             message_hash,
@@ -348,79 +217,56 @@ impl Ics23StarkProver {
         let mut trace = TraceTable::new(TRACE_WIDTH, TOTAL_STEPS);
         let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
 
-        // Initialize chain ID column
-        for row in 0..TOTAL_STEPS {
-            trace[(row, TRACE_WIDTH - 1)] = pub_inputs.chain_id;
-        }
-
-        // Compute leaf hash: H(0x00 || key, value, 0)
+        // Compute leaf hash
         let leaf_input = [
-            self.bytes_to_field(&[vec![0x00], proof.key.clone()].concat())?,
-            self.bytes_to_field(&proof.value)?,
+            bytes_to_field(&[vec![0x00], proof.key.clone()].concat())?,
+            bytes_to_field(&proof.value)?,
             BaseElement::ZERO,
         ];
+        
         let mut state = leaf_input;
         for step in 0..POSEIDON_STEPS {
-            for i in 0..POSEIDON_WIDTH {
-                trace[(step, i)] = state[i];
-            }
+            trace[(step, 0)] = state[0];
+            trace[(step, 1)] = state[1];
+            trace[(step, 2)] = state[2];
             hasher.apply_round(&mut state, step);
         }
-        let leaf_hash = state[0];
 
         // Merkle path computation
-        let mut current_hash = leaf_hash;
+        let mut current_hash = state[0];
         for level in 0..MERKLE_LEVELS {
             let step_base = POSEIDON_STEPS * (level + 1);
-            let merkle_start = POSEIDON_WIDTH + level * 3;
+            let merkle_start_col = 3 + level * 3;
+            let left_sibling = if proof.path[level] { proof.siblings[level] } else { current_hash };
+            let right_sibling = if proof.path[level] { current_hash } else { proof.siblings[level] };
 
-            // Set left, right, and path bit
-            let left = if proof.path[level] { proof.siblings[level] } else { current_hash };
-            let right = if proof.path[level] { current_hash } else { proof.siblings[level] };
-            trace[(step_base, merkle_start)] = left;
-            trace[(step_base, merkle_start + 1)] = right;
-            trace[(step_base, merkle_start + 2)] = if proof.path[level] { BaseElement::ONE } else { BaseElement::ZERO };
+            let mut state = [left_sibling, right_sibling, BaseElement::ZERO];
 
-            // Compute parent hash
-            state = [left, right, BaseElement::ZERO];
             for round in 0..POSEIDON_STEPS {
-                for i in 0..POSEIDON_WIDTH {
-                    trace[(step_base + round, merkle_start + i)] = state[i];
-                }
+                trace[(step_base + round, merkle_start_col)] = state[0];
+                trace[(step_base + round, merkle_start_col + 1)] = state[1];
+                trace[(step_base + round, merkle_start_col + 2)] = state[2];
                 hasher.apply_round(&mut state, round);
             }
             current_hash = state[0];
         }
 
         // Set final root
-        trace[(TOTAL_STEPS - 1, TRACE_WIDTH - POSEIDON_WIDTH)] = pub_inputs.compute_root_from_limbs();
+        trace[(TOTAL_STEPS - 1, 0)] = current_hash;
+        
+        // Initialize chain ID column
+        for row in 0..TOTAL_STEPS {
+            trace[(row, TRACE_WIDTH - 1)] = pub_inputs.chain_id;
+        }
 
         Ok(trace)
     }
 
-    fn bytes_to_field(&self, bytes: &prost::bytes::Bytes) -> Result<BaseElement> {
-        if bytes.is_empty() {
-            return Ok(BaseElement::ZERO);
-        }
-        
-        // Logic for long byte arrays (more than 31 bytes)
-        if bytes.len() > 31 {
-            let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
-            let chunks: Vec<BaseElement> = bytes
-                .chunks(31)
-                .map(|chunk| {
-                    let mut padded = [0u8; 32];
-                    chunk.iter().enumerate().for_each(|(i, &b)| padded[i] = b);
-                    BaseElement::from_bytes(&padded).unwrap_or(BaseElement::ZERO)
-                })
-                .collect();
-            let digest = hasher.hash_elements(&chunks);
-            BaseElement::from_bytes(&digest[0..32]).map_err(|e| anyhow!("Invalid bytes: {}", e))
-        } else { // Logic for short byte arrays (31 bytes or less)
-            let mut padded = [0u8; 32];
-            bytes.iter().enumerate().for_each(|(i, &b)| padded[i] = b);
-            BaseElement::from_bytes(&padded).map_err(|e| anyhow!("Invalid bytes: {}", e))
-        }
+    fn bytes_to_field(bytes: &[u8]) -> Result<BaseElement> {
+        let mut padded = [0u8; 32];
+        let len = bytes.len().min(32);
+        padded[..len].copy_from_slice(&bytes[..len]);
+        BaseElement::from_bytes(&padded).map_err(|e| anyhow!("Invalid bytes: {}", e))
     }
 
     fn bytes_to_field_limbs(&self, bytes: &[u8]) -> Result<[BaseElement; 4]> {
@@ -442,9 +288,9 @@ impl Ics23StarkProver {
         let digest = hasher.hash_bytes(&message_bytes);
         BaseElement::from_bytes(&digest[0..32]).map_err(|e| anyhow!("Invalid message hash: {}", e))
     }
-
+    
     fn string_to_field(&self, s: &str) -> Result<BaseElement> {
-        self.bytes_to_field(s.as_bytes())
+        Self::bytes_to_field(s.as_bytes())
     }
 
     fn serialize_public_inputs(&self, pub_inputs: &PublicInputs) -> Result<Vec<u8>> {
@@ -476,27 +322,22 @@ fn u256_from_base_element(val: BaseElement) -> ethabi::Uint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winter_air::ProofOptions;
+    use crate::uibc::v1::{UniversalMessage, ChainEndpoint};
+    use crate::uibc::v1::StateCheckpoint;
 
     #[test]
     fn test_generate_proof() {
-        let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
         let options = ProofOptions::new(
-            32,
-            8,
-            0,
-            hasher.clone(),
-            hasher,
-            4,
+            4, 256, 16, false, 8, 2048, 2048, 1, 1, 1,
         );
         let prover = Ics23StarkProver::new(options);
 
         let message = UniversalMessage {
-            state_checkpoint: Some(crate::proto::uibc::v1::StateCheckpoint {
+            state_checkpoint: Some(StateCheckpoint {
                 state_root: vec![0u8; 32],
                 ..Default::default()
             }),
-            destination: Some(crate::proto::uibc::v1::Destination {
+            destination: Some(ChainEndpoint {
                 chain_id: "test-chain".to_string(),
                 ..Default::default()
             }),
@@ -540,14 +381,8 @@ impl EVMAdapter {
         message: &UniversalMessage,
         ics23_proof: &InclusionProof,
     ) -> Result<Vec<u8>> {
-        let hasher = winter_crypto::hashers::Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
         let options = ProofOptions::new(
-            32,
-            8,
-            0,
-            hasher.clone(),
-            hasher,
-            4,
+            4, 256, 16, false, 8, 2048, 2048, 1, 1, 1,
         );
         let prover = Ics23StarkProver::new(options);
         let zk_proof = prover.generate_proof(message, ics23_proof)?;
