@@ -1,63 +1,34 @@
 // relayer/src/lib.rs
-use winter_air::{Air, AirContext, Assertion, EvaluationFrame, TraceInfo, Matrix, ProofOptions, FieldExtension};
-use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
-use winter_crypto::hashers::poseidon::Poseidon;
-use winterfell::{Prover, StarkProof, TraceTable};
+
+// Standard library and third-party imports
 use anyhow::{Result, anyhow};
 use prost::bytes::Bytes;
-use crate::uibc::v1::{UniversalMessage, ZkProof, ZkProofRequirement, Ics23Proof, ChainType, proof_requirement::Requirement};
-use crate::uibc::ibc::v1::IbcCompatibilityData;
-use crate::uibc::ibc::extensions::EVMExtension;
-use crate::zk::circuit::{Ics23StarkProver, PublicInputs, Ics23Air};
 
-// Corrected import path for `uibc_gen.rs`
+// winterfell framework imports
+use winter_air::{AirContext, TraceInfo, ProofOptions, FieldExtension};
+use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
+use winter_crypto::hashers::poseidon::Poseidon;
+use winterfell::StarkProof;
+
+// Local crate imports
+use crate::uibc::v1::{UniversalMessage, ZkProof, Ics23Proof, proof_requirement::Requirement};
+use crate::adapters::chain_adapter::InclusionProof;
+use crate::zk::circuit::{Ics23StarkProver, PublicInputs, Ics23Air, 
+    TRACE_WIDTH, TOTAL_STEPS, POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, 
+    POSEIDON_PARTIAL_ROUNDS, MERKLE_LEVELS, bytes_to_field};
+
+// Local module declarations
+// This includes the generated code from your build.rs script.
 mod uibc {
     include!(concat!(env!("OUT_DIR"), "/uibc_gen.rs"));
 }
-
 pub mod adapters;
 pub mod zk;
 
-pub const MODULUS: u64 = BaseElement::MODULUS as u64;
-
-// Relayer Logic
-pub fn generate_zkp(
-    message: UniversalMessage,
-    proof: Ics23Proof,
-    root: [BaseElement; 4],
-    zk_req: Option<ZkProofRequirement>,
-    ibc_data: Option<IbcCompatibilityData>,
-    evm_ext: Option<EVMExtension>,
-) -> Result<Vec<u8>> {
-    let trace_info = TraceInfo::new(TRACE_WIDTH, TOTAL_STEPS);
-    let degrees = Ics23Air::transition_constraint_degrees();
-    let num_assertions = Ics23Air::num_assertions();
-
-    let air = Ics23Air {
-        context: AirContext::new(trace_info, degrees, num_assertions, ProofOptions::new(4, 256, 16, false, 8, 2048, 2048, 1, 1, 1)),
-        poseidon: Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS),
-        pub_inputs: PublicInputs {
-            message_hash: bytes_to_field(&message.message_id),
-            state_root: root,
-            chain_id: bytes_to_field(&message.source.as_ref().map_or_else(|| "".to_string(), |s| s.chain_id.clone()).as_bytes()),
-            sequence: ibc_data.as_ref().map_or(BaseElement::ZERO, |d| BaseElement::new(d.sequence % MODULUS)),
-            gas_limit: evm_ext.as_ref().map_or(BaseElement::ZERO, |e| BaseElement::new(e.gas_limit % MODULUS)),
-            max_fee_per_gas: evm_ext.as_ref().map_or(BaseElement::ZERO, |e| BaseElement::new(e.max_fee_per_gas % MODULUS)),
-        },
-    };
-
-    let prover = Ics23Prover {
-        air,
-        options: ProofOptions::default(),
-    };
-
-    let trace = prover.build_trace(message, proof, zk_req, ibc_data, evm_ext)?;
-    
-    prover.prove(trace).map_err(|e| anyhow!("Proving failed: {}", e))
-}
-
-// Message Processing
-pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics23Proof, root: [BaseElement; 4]) -> Result<Vec<u8>> {
+// The core function for ZK proof generation.
+// This function is dedicated solely to validating the message and creating the STARK proof.
+// It returns the proof data or an error.
+pub fn process_message(message: UniversalMessage, proof: Ics23Proof, root: [BaseElement; 4]) -> Result<Vec<u8>> {
     // 1. Validate the message and proof
     if !message.is_valid() {
         return Err(anyhow!("Message validation failed"));
@@ -73,7 +44,7 @@ pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics
 
     // 2. Check for ZK proof requirement
     let zk_req = match &message.proof_requirement {
-        Some(uibc::v1::proof_requirement::Requirement::ZkProof(req)) => Some(req.clone()),
+        Some(Requirement::ZkProof(req)) => Some(req.clone()),
         _ => None,
     };
 
@@ -82,9 +53,10 @@ pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics
     }
 
     // 3. Instantiate the prover and generate the proof
-    let options = ProofOptions::new(4, 256, 16, Some(FieldExtension::Quadratic), 8, 2048);
+    // Use the correct API for ProofOptions.
+    let options = ProofOptions::new(4, 256, 16, FieldExtension::Quadratic, 8, 2048);
     let prover = Ics23StarkProver::new(options);
-    
+
     // The prover needs the InclusionProof data structure, not the raw fields.
     let inclusion_proof = InclusionProof {
         path: proof.key,
@@ -96,76 +68,42 @@ pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics
     let zk_proof = prover.generate_proof(&message, &inclusion_proof)?;
     
     Ok(zk_proof.proof_data)
-    // Extract payload for ZK proof (using TokenTransfer as an example)
-    //let (key, value) = match &message.payload {
-        //Some(uibc::v1::universal_message::Payload::TokenTransfer(token)) => (
-            //token.sender.as_bytes(),
-            //token.amount.as_bytes(),
-       // ),
-       // _ => (vec![], vec![]),
-   // };
-    //if key.is_empty() || value.is_empty() {
-       // return Err("Unsupported or empty payload for ZK proof");
-    //}
+}
 
-    // Extract IBC data
-    //let ibc_data = message.ibc_data.clone();
+// This is where your main application logic should reside.
+// It calls the `process_message` function and then handles everything else,
+// such as logging, fees, and on-chain submission.
+// You can structure this to match your application's flow.
+pub fn handle_message_and_submit(message: UniversalMessage, proof: Ics23Proof, root: [BaseElement; 4]) -> Result<()> {
+    // Call the function that generates the STARK proof.
+    let zkp = process_message(message.clone(), proof.clone(), root)?;
 
-    // Extract EVM extension if present
-    //let evm_ext = if message.source.as_ref().map_or(false, |s| s.chain_type == uibc::v1::ChainType::ChainTypeEvm as i32) ||
-                     //message.destination.as_ref().map_or(false, |d| d.chain_type == uibc::v1::ChainType::ChainTypeEvm as i32) {
-        //Some(uibc::ibc::extensions::EVMExtension {
-            //domain_separator: vec![], // Placeholder
-            //gas_limit: 200000,
-            //max_fee_per_gas: 1000000000, // 1 gwei
-            //max_priority_fee: 500000000, // 0.5 gwei
-            //access_list: vec![uibc::ibc::extensions::AccessTuple {
-                //address: vec![0x11; 20], // Example address
-                //storage_keys: vec![vec![0x22; 32]], // Example storage key
-            //}],
-        //})
-    //} else {
-        //None
-    //};
-
-    // Generate STARK proof
-    let zkp = generate_zkp(message.clone(), proof.clone(), root, zk_req, ibc_data, evm_ext)?;
-
-    // Log message details
+    // Log message details.
     println!("Processing UIBCP message with ID: {:?}", message.message_id);
     let canonical_bytes = message.canonical_encode();
     println!("Canonical byte representation (length {}): {:?}", canonical_bytes.len(), canonical_bytes);
-
-    // Verify leaf hash consistency
-    let mut hasher = Poseidon::<BaseElement>::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
-    let leaf_input = [
-        bytes_to_field(&[vec![0x00], key].concat()),
-        bytes_to_field(&value),
-        BaseElement::ZERO,
-    ];
-    let leaf_hash = hasher.hash_elements(&leaf_input);
-    println!("Computed leaf hash: {:?}", leaf_hash);
-
-    // Process fees (example logging)
+    
+    // Process fees (example logging).
     if let Some(fees) = &message.fees {
         println!("Total fee: {} {}", fees.total_fee.amount, fees.total_fee.denom);
     }
+    
+    // You would typically use the generated `zkp` here:
+    // - Submit zkp to an IbcPacketHandler contract.
+    // - Handle fee distribution and relayer assignment.
+    // - Emit events for blockchain updates.
 
-    // In production:
-    // - Submit zkp to IbcPacketHandler contract
-    // - Handle fee distribution and relayer assignment
-    // - Emit events for blockchain updates
-
-    Ok(zkp)
+    Ok(())
 }
 
 // Unit Tests
 #[cfg(test)]
 mod tests {
     use super::*;
-    use uibc::v1::{UniversalMessage, Ics23Proof, token_transfer::TokenTransfer, proof_requirement::Requirement};
-    use uibc::ibc::v1::{IbcCompatibilityData, FungibleTokenPacket, Height};
-    use uibc::ibc::extensions::EVMExtension;
+    use crate::uibc::v1::{UniversalMessage, Ics23Proof, token_transfer::TokenTransfer, proof_requirement::Requirement};
+    use crate::uibc::ibc::v1::{IbcCompatibilityData, FungibleTokenPacket, Height};
+    use crate::uibc::ibc::extensions::EVMExtension;
+    use crate::zk::circuit::MERKLE_LEVELS;
 
     #[test]
     fn test_process_message() {
@@ -235,6 +173,7 @@ mod tests {
             value: vec![1, 2, 3],
             siblings: vec![0; MERKLE_LEVELS],
             path: vec![false; MERKLE_LEVELS],
+            proof_data: vec![], // Added this field to match the struct definition
         };
         let root = [BaseElement::ZERO; 4];
         let result = process_message(message, proof, root);
