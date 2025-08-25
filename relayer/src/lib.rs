@@ -32,7 +32,7 @@ pub fn generate_zkp(
     let num_assertions = Ics23Air::num_assertions();
 
     let air = Ics23Air {
-        context: AirContext::new(trace_info, degrees, num_assertions, ProofOptions::default()),
+        context: AirContext::new(trace_info, degrees, num_assertions, ProofOptions::new(4, 256, 16, false, 8, 2048, 2048, 1, 1, 1)),
         poseidon: Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS),
         pub_inputs: PublicInputs {
             message_hash: bytes_to_field(&message.message_id),
