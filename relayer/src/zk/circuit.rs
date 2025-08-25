@@ -4,6 +4,7 @@ use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
 use winter_crypto::hashers::poseidon::Poseidon;
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use anyhow::{Result, anyhow};
+use prost::bytes::Bytes;
 use crate::proto::v1::{UniversalMessage, ZkProof};
 use crate::adapters::chain_adapter::InclusionProof;
 use crate::adapters::evm::EVMAdapter;
