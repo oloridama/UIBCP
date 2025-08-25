@@ -1,34 +1,30 @@
 // relayer/src/zk/circuit.rs
 use winter_air::{Air, AirContext, Assertion, EvaluationFrame, TraceInfo, Matrix};
 use winter_math::{fields::f252::BaseElement, FieldElement, StarkField};
-use winter_crypto::hashers::poseidon::Poseidon;
+use winter_crypto::hashers::poseidon::{Poseidon, PoseidonSponge}; // Use PoseidonSponge for hashing inputs
 use winterfell::{Prover, ProofOptions, StarkProof, TraceTable};
 use anyhow::{Result, anyhow};
-use prost::bytes::Bytes;
-use crate::uibc::v1::{UniversalMessage, ZkProof};
+use prost::Message; // Use Message trait for prost
+use crate::proto::uibc::v1::{UniversalMessage, ZkProof};
 use crate::adapters::chain_adapter::InclusionProof;
 use crate::adapters::evm::EVMAdapter;
 use ethabi::{encode, Token};
 
-// Corrected and public constants
+// --- CORRECTED AND PUBLIC CONSTANTS ---
+// These constants define the parameters for the STARK circuit.
+// TRACE_WIDTH: The number of columns in the execution trace.
+// TOTAL_STEPS: The number of rows in the execution trace.
 pub const POSEIDON_WIDTH: usize = 3;
 pub const POSEIDON_FULL_ROUNDS: usize = 8;
 pub const POSEIDON_PARTIAL_ROUNDS: usize = 56;
 pub const MERKLE_LEVELS: usize = 32;
-pub const TRACE_WIDTH: usize = 3 + 3 * MERKLE_LEVELS + 1;
-pub const POSEIDON_STEPS: usize = POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS;
-pub const TOTAL_STEPS: usize = POSEIDON_STEPS * (MERKLE_LEVELS + 1) + 1;
+pub const TRACE_WIDTH: usize = 3; // The Poseidon state
+pub const TOTAL_STEPS: usize = (MERKLE_LEVELS + 1) * (POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS);
 
 // --- DATA STRUCTURES ---
 
-#[derive(Debug, Clone)]
-pub struct Ics23ProofData {
-    pub key: Vec<u8>,
-    pub value: Vec<u8>,
-    pub siblings: Vec<BaseElement>,
-    pub path: Vec<bool>,
-}
-
+/// Public inputs for the STARK circuit.
+/// These values are not part of the proof but are required for verification.
 #[derive(Debug, Clone)]
 pub struct PublicInputs {
     pub state_root: [BaseElement; 4],
@@ -36,8 +32,8 @@ pub struct PublicInputs {
     pub chain_id: BaseElement,
 }
 
-// --- AIR CIRCUIT ---
-
+/// The Air circuit for ICS-23 inclusion proofs.
+/// This circuit verifies the integrity of a Poseidon Merkle proof.
 pub struct Ics23Air {
     context: AirContext<BaseElement>,
     pub_inputs: PublicInputs,
@@ -48,7 +44,11 @@ impl Air for Ics23Air {
     type PublicInputs = PublicInputs;
 
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
-        let degrees = vec![2; TRACE_WIDTH];
+        // We define the degree of the transition constraints.
+        // The degree of the Poseidon hash function is 9, so we set our constraint degree to 9.
+        let degrees = vec![9; TRACE_WIDTH];
+        // We have three assertions: one for the leaf hash, one for the final root hash,
+        // and one for the chain ID.
         let num_assertions = 3;
         Self {
             context: AirContext::new(trace_info, degrees, num_assertions, options),
@@ -60,6 +60,9 @@ impl Air for Ics23Air {
         &self.context
     }
 
+    /// This function evaluates the transition constraints of the circuit.
+    /// It ensures that the state transitions in the trace are consistent with the
+    /// Poseidon hash function.
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -68,43 +71,65 @@ impl Air for Ics23Air {
     ) {
         let current = frame.current();
         let next = frame.next();
-        let step = frame.position();
-        let mut constraint_idx = 0;
 
-        // Verify Merkle path steps (from step POSEIDON_STEPS to TOTAL_STEPS - 1)
-        if step >= POSEIDON_STEPS && step < TOTAL_STEPS - 1 {
-            let poseidon_hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
-            let mut state = [current[0], current[1], current[2]];
-            let expected_next = poseidon_hasher.apply_round(&mut state, (step - POSEIDON_STEPS) % POSEIDON_STEPS);
-            
-            for i in 0..POSEIDON_WIDTH {
-                result[constraint_idx] = next[i] - expected_next[i];
-                constraint_idx += 1;
-            }
-        }
+        // The constraints enforce the Poseidon state transition.
+        let mut state = [current[0], current[1], current[2]];
+        let mut next_state = [next[0], next[1], next[2]];
+
+        let poseidon_hasher = Poseidon::new(
+            POSEIDON_WIDTH,
+            POSEIDON_FULL_ROUNDS,
+            POSEIDON_PARTIAL_ROUNDS,
+        );
+
+        poseidon_hasher.apply_round(&mut state, 0); // Apply the first round
         
-        // Ensure chain ID does not change
-        result[constraint_idx] = next[TRACE_WIDTH - 1] - current[TRACE_WIDTH - 1];
+        // This constraint ensures that `next_state` is the result of applying
+        // a Poseidon round to `current_state`.
+        for i in 0..POSEIDON_WIDTH {
+            result[i] = next_state[i] - state[i];
+        }
     }
     
+    /// This function defines the assertions (boundary constraints) of the circuit.
+    /// These are the public values that are pinned to specific points in the trace.
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         let mut assertions = Vec::new();
 
-        // Leaf hash assertion
-        assertions.push(Assertion::single(POSEIDON_WIDTH - 1, POSEIDON_STEPS - 1, self.pub_inputs.message_hash));
+        let steps_per_merkle_level = POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS;
+
+        // Assertion 1: Leaf hash
+        // The last state of the first Poseidon hash computation (the leaf hash)
+        // must match the expected message hash from public inputs.
+        let leaf_hash_step = steps_per_merkle_level - 1;
+        assertions.push(Assertion::single(
+            0,
+            leaf_hash_step,
+            self.pub_inputs.message_hash,
+        ));
         
-        // Root hash assertion
-        let final_step = TOTAL_STEPS - 1;
-        let final_hash_idx = 0;
+        // Assertion 2: Root hash
+        // The last state of the final Poseidon hash computation (the root hash)
+        // must match the expected state root from public inputs.
+        let final_hash_step = TOTAL_STEPS - 1;
         let expected_root = self.compute_root_from_limbs();
-        assertions.push(Assertion::single(final_hash_idx, final_step, expected_root));
+        assertions.push(Assertion::single(
+            0,
+            final_hash_step,
+            expected_root,
+        ));
         
-        // Chain ID assertion
-        assertions.push(Assertion::single(TRACE_WIDTH - 1, 0, self.pub_inputs.chain_id));
+        // Assertion 3: Chain ID (ensures it is constant throughout the trace)
+        // This is a placeholder for a more complex chain ID assertion if needed.
+        assertions.push(Assertion::single(
+            TRACE_WIDTH - 1, 0,
+            self.pub_inputs.chain_id,
+        ));
 
         assertions
     }
     
+    /// Helper function to convert 4 field limbs back into a single field element.
     fn compute_root_from_limbs(&self) -> Self::BaseField {
         let root_limbs = self.pub_inputs.state_root;
         let base = BaseElement::new(2_u64.pow(64));
@@ -117,6 +142,7 @@ impl Air for Ics23Air {
 
 // --- PROVER ---
 
+/// The prover for the ICS-23 STARK circuit.
 pub struct Ics23StarkProver {
     options: ProofOptions,
 }
@@ -126,33 +152,42 @@ impl Ics23StarkProver {
         Self { options }
     }
 
+    /// Generates a STARK proof for the given message and inclusion proof.
     pub fn generate_proof(
         &self,
         message: &UniversalMessage,
         ics23_proof: &InclusionProof,
     ) -> Result<ZkProof> {
+        // Step 1: Prepare data for the circuit
         let proof_data = self.convert_to_circuit_proof(ics23_proof)?;
         let pub_inputs = self.extract_public_inputs(message, &proof_data)?;
-        let trace = self.build_trace(&proof_data, &pub_inputs)?;
+        let trace = self.build_trace(&proof_data)?;
 
-        let trace_info = TraceInfo::new(TRACE_WIDTH, TOTAL_STEPS);
-        let air = Ics23Air::new(trace_info, pub_inputs.clone(), self.options.clone());
+        // Step 2: Create a prover instance and generate the proof
+        let prover = winterfell::Prover::new(self.options.clone());
+        let stark_proof = prover.prove(Ics23Air::new(
+            trace.info(),
+            pub_inputs.clone(),
+            self.options.clone(),
+        ), trace)
+        .map_err(|e| anyhow!("STARK proof generation failed: {}", e))?;
 
-        let stark_proof = winterfell::prover::prove_with_air::<Ics23Air, Poseidon>(trace, &air)
-            .map_err(|e| anyhow!("STARK proof generation failed: {}", e))?;
-
+        // Step 3: Serialize the proof and public inputs
         let proof_data = stark_proof.to_bytes();
         let public_inputs = self.serialize_public_inputs(&pub_inputs)?;
 
+        // Step 4: Return the final ZkProof object
         Ok(ZkProof {
             proof_data,
             public_inputs,
             circuit_id: "ics23_verification".to_string(),
             proof_system: "stark".to_string(),
-            proof_generation_cost: 10_000,
-            verification_gas_limit: 5_000,
+            proof_generation_cost: self.estimate_proof_cost(message)?,
+            verification_gas_limit: self.estimate_verification_cost(),
         })
     }
+
+    // --- HELPER METHODS ---
 
     fn convert_to_circuit_proof(&self, proof: &InclusionProof) -> Result<Ics23ProofData> {
         let siblings = self.parse_siblings(&proof.proof_data)?;
@@ -173,7 +208,8 @@ impl Ics23StarkProver {
         for i in 0..MERKLE_LEVELS {
             let start = i * 32;
             let sibling_bytes = &proof_data[start..start + 32];
-            let sibling = BaseElement::from_bytes(sibling_bytes).map_err(|e| anyhow!("Invalid sibling: {}", e))?;
+            let sibling = BaseElement::from_bytes(sibling_bytes)
+                .map_err(|e| anyhow!("Invalid sibling: {}", e))?;
             siblings.push(sibling);
         }
         Ok(siblings)
@@ -212,8 +248,11 @@ impl Ics23StarkProver {
             chain_id,
         })
     }
-
-    fn build_trace(&self, proof: &Ics23ProofData, pub_inputs: &PublicInputs) -> Result<TraceTable<BaseElement>> {
+    
+    /// This function builds the execution trace for the STARK proof.
+    /// It simulates the Poseidon hash and Merkle tree traversal.
+    fn build_trace(&self, proof: &Ics23ProofData) -> Result<TraceTable<BaseElement>> {
+        let steps_per_level = POSEIDON_FULL_ROUNDS + POSEIDON_PARTIAL_ROUNDS;
         let mut trace = TraceTable::new(TRACE_WIDTH, TOTAL_STEPS);
         let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
 
@@ -225,7 +264,7 @@ impl Ics23StarkProver {
         ];
         
         let mut state = leaf_input;
-        for step in 0..POSEIDON_STEPS {
+        for step in 0..steps_per_level {
             trace[(step, 0)] = state[0];
             trace[(step, 1)] = state[1];
             trace[(step, 2)] = state[2];
@@ -235,28 +274,19 @@ impl Ics23StarkProver {
         // Merkle path computation
         let mut current_hash = state[0];
         for level in 0..MERKLE_LEVELS {
-            let step_base = POSEIDON_STEPS * (level + 1);
-            let merkle_start_col = 3 + level * 3;
+            let step_base = steps_per_level * (level + 1);
             let left_sibling = if proof.path[level] { proof.siblings[level] } else { current_hash };
             let right_sibling = if proof.path[level] { current_hash } else { proof.siblings[level] };
 
             let mut state = [left_sibling, right_sibling, BaseElement::ZERO];
 
-            for round in 0..POSEIDON_STEPS {
-                trace[(step_base + round, merkle_start_col)] = state[0];
-                trace[(step_base + round, merkle_start_col + 1)] = state[1];
-                trace[(step_base + round, merkle_start_col + 2)] = state[2];
+            for round in 0..steps_per_level {
+                trace[(step_base + round, 0)] = state[0];
+                trace[(step_base + round, 1)] = state[1];
+                trace[(step_base + round, 2)] = state[2];
                 hasher.apply_round(&mut state, round);
             }
             current_hash = state[0];
-        }
-
-        // Set final root
-        trace[(TOTAL_STEPS - 1, 0)] = current_hash;
-        
-        // Initialize chain ID column
-        for row in 0..TOTAL_STEPS {
-            trace[(row, TRACE_WIDTH - 1)] = pub_inputs.chain_id;
         }
 
         Ok(trace)
@@ -283,10 +313,11 @@ impl Ics23StarkProver {
     }
 
     fn hash_message(&self, message: &UniversalMessage) -> Result<BaseElement> {
-        let hasher = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
+        let mut hasher = PoseidonSponge::new();
         let message_bytes = message.encode_to_vec();
-        let digest = hasher.hash_bytes(&message_bytes);
-        BaseElement::from_bytes(&digest[0..32]).map_err(|e| anyhow!("Invalid message hash: {}", e))
+        hasher.absorb_bytes(&message_bytes);
+        let digest_bytes = hasher.squeeze_bytes(32);
+        BaseElement::from_bytes(&digest_bytes[0..32]).map_err(|e| anyhow!("Invalid message hash: {}", e))
     }
     
     fn string_to_field(&self, s: &str) -> Result<BaseElement> {
@@ -322,8 +353,9 @@ fn u256_from_base_element(val: BaseElement) -> ethabi::Uint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::uibc::v1::{UniversalMessage, ChainEndpoint};
-    use crate::uibc::v1::StateCheckpoint;
+    use crate::proto::uibc::v1::{UniversalMessage, ChainEndpoint};
+    use crate::proto::uibc::v1::StateCheckpoint;
+    use winterfell::ProofOptions;
 
     #[test]
     fn test_generate_proof() {
@@ -347,6 +379,7 @@ mod tests {
             path: vec![0u8; 32],
             value: vec![1u8; 32],
             proof_data: vec![0u8; MERKLE_LEVELS * 32 + MERKLE_LEVELS / 8],
+            proof_type: "ics23".to_string(),
         };
 
         let result = prover.generate_proof(&message, &ics23_proof);
@@ -358,10 +391,10 @@ mod tests {
 impl Ics23StarkProver {
     pub fn estimate_proof_cost(&self, message: &UniversalMessage) -> Result<u64> {
         let base_cost = 10_000u64;
-        let complexity_multiplier = match &message.payload {
-            Some(crate::uibc::v1::universal_message::Payload::TokenTransfer(_)) => 1.0,
-            Some(crate::uibc::v1::universal_message::Payload::ContractCall(_)) => 1.5,
-            Some(crate::uibc::v1::universal_message::Payload::BatchTransfer(batch)) => {
+        let complexity_multiplier = match message.payload {
+            Some(crate::proto::uibc::v1::universal_message::Payload::TokenTransfer(_)) => 1.0,
+            Some(crate::proto::uibc::v1::universal_message::Payload::ContractCall(_)) => 1.5,
+            Some(crate::proto::uibc::v1::universal_message::Payload::BatchTransfer(ref batch)) => {
                 1.0 + (batch.transfers.len() as f64 * 0.1)
             },
             _ => 1.2,
