@@ -7,3 +7,4 @@ import "uibc/v1/message.proto";
 import "uibc/ibc/v1/compatibility.proto";
 import "uibc/ibc/v1/ics20.proto";
 import "uibc/ibc/extensions/evm.proto"
+
