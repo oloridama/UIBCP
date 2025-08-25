@@ -126,7 +126,7 @@ pub fn process_message(message: uibc::v1::UniversalMessage, proof: uibc::v1::Ics
         //})
     //} else {
         //None
-    };
+    //};
 
     // Generate STARK proof
     let zkp = generate_zkp(message.clone(), proof.clone(), root, zk_req, ibc_data, evm_ext)?;
