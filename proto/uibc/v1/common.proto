@@ -12,6 +12,12 @@ message Height {
   uint64 revision_height = 2;
 }
 
+// Fee for message processing
+message Fee {
+  string amount = 1;  // The amount of the fee
+  string denom = 2;   // The denomination of the fee (e.g., "uatom")
+}
+
 // ====================
 // SHARED ENUMS
 // ====================
@@ -19,13 +25,13 @@ message Height {
 // Chain type enum for routing decisions
 enum ChainType {
   CHAIN_TYPE_UNSPECIFIED = 0;
-  CHAIN_TYPE_TENDERMINT = 1;       // Cosmos SDK chains
-  CHAIN_TYPE_EVM = 2;              // Ethereum, Polygon, BSC, etc.
-  CHAIN_TYPE_SOLANA = 3;           // Solana ecosystem
-  CHAIN_TYPE_UTXO = 4;             // Bitcoin, Bitcoin Cash, etc.
-  CHAIN_TYPE_POLKADOT = 5;         // Polkadot parachains
-  CHAIN_TYPE_NEAR = 6;             // NEAR Protocol
-  CHAIN_TYPE_APTOS = 7;            // Aptos/Move-based chains
+  CHAIN_TYPE_TENDERMINT = 1;    // Cosmos SDK chains
+  CHAIN_TYPE_EVM = 2;           // Ethereum, Polygon, BSC, etc.
+  CHAIN_TYPE_SOLANA = 3;        // Solana ecosystem
+  CHAIN_TYPE_UTXO = 4;          // Bitcoin, Bitcoin Cash, etc.
+  CHAIN_TYPE_POLKADOT = 5;      // Polkadot parachains
+  CHAIN_TYPE_NEAR = 6;          // NEAR Protocol
+  CHAIN_TYPE_APTOS = 7;         // Aptos/Move-based chains
 }
 
 // Message type definitions
@@ -54,10 +60,10 @@ enum Priority {
 // Performance metrics for relayer bonuses
 enum PerformanceMetric {
   PERFORMANCE_METRIC_UNSPECIFIED = 0;
-  PERFORMANCE_METRIC_SUCCESS_RATE = 1;      // % of successful deliveries
-  PERFORMANCE_METRIC_LATENCY = 2;           // Average delivery time
-  PERFORMANCE_METRIC_UPTIME = 3;            // Relayer availability %
-  PERFORMANCE_METRIC_VOLUME = 4;            // Total value processed
+  PERFORMANCE_METRIC_SUCCESS_RATE = 1;       // % of successful deliveries
+  PERFORMANCE_METRIC_LATENCY = 2;            // Average delivery time
+  PERFORMANCE_METRIC_UPTIME = 3;             // Relayer availability %
+  PERFORMANCE_METRIC_VOLUME = 4;             // Total value processed
 }
 
 // Slashing offenses for relayer misbehavior
@@ -67,8 +73,8 @@ enum SlashingOffense {
   SLASHING_OFFENSE_MESSAGE_REPLAY = 2;
   SLASHING_OFFENSE_TIMEOUT_FRAUD = 3;
   SLASHING_OFFENSE_MALICIOUS_ROUTING = 4;
-  SLASHING_OFFENSE_UNAVAILABILITY = 5;      // Relayer went offline
-  SLASHING_OFFENSE_DOUBLE_SPENDING = 6;     // Attempted double-spend
+  SLASHING_OFFENSE_UNAVAILABILITY = 5;       // Relayer went offline
+  SLASHING_OFFENSE_DOUBLE_SPENDING = 6;      // Attempted double-spend
 }
 
 // Relayer selection methods
@@ -78,6 +84,6 @@ enum SelectionMethod {
   SELECTION_METHOD_LOWEST_FEE = 2;
   SELECTION_METHOD_HIGHEST_STAKE = 3;
   SELECTION_METHOD_REPUTATION_BASED = 4;
-  SELECTION_METHOD_RANDOM_VRF = 5;          // Verifiable Random Function
-  SELECTION_METHOD_USER_SPECIFIED = 6;      // User chose specific relayer
+  SELECTION_METHOD_RANDOM_VRF = 5;           // Verifiable Random Function
+  SELECTION_METHOD_USER_SPECIFIED = 6;       // User chose specific relayer
 }
