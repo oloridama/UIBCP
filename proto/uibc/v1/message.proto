@@ -18,7 +18,7 @@ import "uibc/v1/proof.proto";
 message IbcCompatibilityData {};
 
 // Code generation options for multiple languages
-option go_package = "[github.com/oloidama/UIBCP/proto/uibc/v1](https://github.com/oloidama/UIBCP/proto/uibc/v1)";
+option go_package = "github.com/oloidama/UIBCP/proto/uibc/v1";
 option java_package = "com.oloridama.uibcp.v1";
 option java_multiple_files = true;
 option java_outer_classname = "MessageProto";
