@@ -2,7 +2,7 @@
 use std::io::Result;
 use prost_build::Config;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn main() -> Result<()> {
     // Print the current working directory to help with debugging
@@ -44,9 +44,9 @@ fn main() -> Result<()> {
     // We compile all the proto files by pointing to a single top-level file
     // that imports the others. This ensures a single output file.
     let proto_files = &[
-        "uibc/v1/uibc.proto",
+        Path::new("uibc/v1/uibc.proto"),
     ];
-    let include_dirs = &["proto"];
+    let include_dirs = &[Path::new("proto")];
 
     config.compile_protos(proto_files, include_dirs)?;
 
