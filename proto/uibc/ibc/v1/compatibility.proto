@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package uibc.ibc.v1;
 
+// This import provides access to the shared 'Height' and other common messages.
+import "uibc/v1/common.proto";
+
 // Code generation options
 option go_package = "github.com/oloridama/UIBCP/proto/uibc/ibc/v1";
 option java_package = "com.oloridama.uibcp.ibc.v1";
@@ -18,9 +21,9 @@ message IbcCompatibilityData {
   string destination_port = 4;
   string destination_channel = 5;
 
-  // Timeout Handling - using local Height definition
+  // Timeout Handling - using imported Height definition
   oneof timeout {
-    IbcHeight timeout_height = 10;
+    Height timeout_height = 10;
     uint64 timeout_timestamp = 11;
   }
 
@@ -34,12 +37,6 @@ message IbcCompatibilityData {
   // Connection and client information
   ConnectionInfo connection_info = 15;
   ClientInfo client_info = 16;
-}
-
-// Local Height definition (identical to uibc.v1.Height)
-message IbcHeight {
-  uint64 revision_number = 1;
-  uint64 revision_height = 2;
 }
 
 // Complete fungible token packet data
@@ -81,7 +78,7 @@ enum ConnectionState {
 message ClientInfo {
   string client_id = 1;
   string client_type = 2;
-  IbcHeight latest_height = 3;
+  Height latest_height = 3;
   bytes consensus_state = 4;
   bytes client_state = 5;
   bool frozen = 6;
