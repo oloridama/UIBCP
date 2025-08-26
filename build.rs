@@ -12,11 +12,11 @@ fn main() -> Result<()> {
     config.type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]");
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
     
-    // Configure serialization for `bytes` fields
-    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("*.bytes", "#[serde(with = \"prost_serde_bytes\")]");
+    // Configure serialization for `bytes` fields using the `serde_bytes` module.
+    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("*.bytes", "#[serde(with = \"serde_bytes\")]");
 
     // Add necessary derives to key messages
     config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone, validator::Validate)]");
@@ -27,9 +27,10 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // The key change: We use `compile_protos` to generate all the code.
+    // We compile all the proto files by pointing to a single top-level file
+    // that imports the others. This ensures a single output file.
     let proto_files = &[
-        "uibc/v1/uibc.proto", // <-- Corrected path
+        "uibc/v1/uibc.proto",
     ];
     let include_dirs = &["proto"];
 
