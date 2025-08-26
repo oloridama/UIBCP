@@ -1,42 +1,29 @@
-// build.rs
-use std::io::{self, Write};
+// File: build.rs
+// This script will compile the .proto files and generate the Rust code.
+use std::io::Result;
 use prost_build::Config;
-use std::env;
-use std::path::{Path, PathBuf};
 
-fn main() -> io::Result<()> {
-    // Print the current working directory to help with debugging
-    let current_dir = env::current_dir()?;
-    writeln!(io::stderr(), "cargo:warning=Current working directory: {:?}", current_dir)?;
-
-    // Tell Cargo to re-run this build script if any proto file changes
-    writeln!(io::stderr(), "cargo:rerun-if-changed=proto/")?;
-
-    // Get the output directory where the generated code should be written.
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    writeln!(io::stderr(), "cargo:warning=Output directory: {:?}", out_dir)?;
-
-    // This is the full path of the file we expect to be generated
-    let generated_file_path = out_dir.join("uibc.rs");
-    writeln!(io::stderr(), "cargo:warning=Expected generated file path: {:?}", generated_file_path)?;
+fn main() -> Result<()> {
+    // This tells Cargo to re-run the build script if any of the proto files change
+    println!("cargo:rerun-if-changed=proto/");
 
     let mut config = Config::new();
 
-    // Add serde derives for all messages
+    // Add serde derives to enable serialization and deserialization
     config.type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]");
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
     
-    // Configure serialization for `bytes` fields using the `serde_bytes` module.
-    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"serde_bytes\")]");
-    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"serde_bytes\")]");
-    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"serde_bytes\")]");
-    config.field_attribute("*.bytes", "#[serde(with = \"serde_bytes\")]");
+    // Configure serialization for specific `bytes` fields
+    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("*.bytes", "#[serde(with = \"prost_serde_bytes\")]");
 
-    // Add necessary derives to key messages
+    // Add necessary derives to specific messages
     config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone, validator::Validate)]");
     config.message_attribute("uibc.v1.Ics23Proof", "#[derive(Clone)]");
     
-    // Add validation attributes
+    // Add validation attributes using the validator crate
     config.field_attribute("uibc.v1.UniversalMessage.message_id", "#[validate(length(equal = 32))]");
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
@@ -44,10 +31,14 @@ fn main() -> io::Result<()> {
     // We compile all the proto files by pointing to a single top-level file
     // that imports the others. This ensures a single output file.
     let proto_files = &[
-        Path::new("uibc/v1/uibc.proto"),
+        "uibc/v1/uibc.proto",
     ];
-    let include_dirs = &[Path::new("proto")];
+    let include_dirs = &[
+        "proto", // Include the root of your proto files
+        "proto/uibc/ibc", // Explicitly include this path
+    ];
 
+    // This is the core function that generates the code
     config.compile_protos(proto_files, include_dirs)?;
 
     Ok(())
