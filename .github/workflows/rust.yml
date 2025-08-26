@@ -1,5 +1,4 @@
 name: Export Poseidon Constants
-
 on:
   push:
     branches:
@@ -9,7 +8,6 @@ on:
 jobs:
   export-constants:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,6 +20,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
+      # This new step will manually run protoc to show us any hidden errors.
+      - name: Debug Protobuf compilation
+        run: |
+          set -o pipefail
+          echo "Running Protobuf compiler..."
+          protoc \
+            --prost_out=. \
+            --include_imports \
+            --include_source_info \
+            --proto_path=proto \
+            uibc/v1/uibc.proto 2>&1 | tee protoc_output.log
+          
       - name: Build project
         run: cargo build --release
 
