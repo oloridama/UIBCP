@@ -1,8 +1,13 @@
 // build.rs
 use std::io::Result;
 use prost_build::Config;
+use std::env;
 
 fn main() -> Result<()> {
+    // Print the current working directory to help with debugging
+    let current_dir = env::current_dir()?;
+    println!("cargo:warning=Current working directory: {:?}", current_dir);
+
     // Tell Cargo to re-run this build script if any proto file changes
     println!("cargo:rerun-if-changed=proto/");
 
