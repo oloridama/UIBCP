@@ -14,10 +14,6 @@ import "uibc/v1/common.proto";
 import "uibc/v1/proof.proto";
 import "uibc/ibc/v1/compatibility.proto";
 
-// Forward declaration for IBC compatibility
-// This will be defined in uibc/ibc/v1/compatibility.proto
-message IbcCompatibilityData {};
-
 // Code generation options for multiple languages
 option go_package = "github.com/oloidama/UIBCP/proto/uibc/v1";
 option java_package = "com.oloridama.uibcp.v1";
@@ -68,7 +64,7 @@ message UniversalMessage {
     TokenTransfer token_transfer = 10;      // Simple token movements
     ContractCall contract_call = 11;        // Smart contract execution
     StateQuery state_query = 12;            // Query chain state with proofs
-    Acknowledgment acknowledgment = 13;     // Response to processed message
+    Acknowledgment acknowledgment = 13;      // Response to processed message
     Error error = 14;                       // Error notification
     BatchTransfer batch_transfer = 15;      // Multiple token transfers
   }
@@ -77,7 +73,7 @@ message UniversalMessage {
   // Exactly one timeout type must be specified for safety
   // Best Practice: Always specify timeouts to prevent indefinite blocking
   oneof timeout {
-    Height timeout_height = 20;       // Absolute block height timeout
+    Height timeout_height = 20;        // Absolute block height timeout
     uint64 timeout_timestamp = 21;    // Unix timestamp timeout
   }
 
