@@ -18,11 +18,11 @@ ethabi = "17.2.0"
 anyhow = "1.0.83"
 
 # For Protocol Buffers (Prost) and Serde compatibility
-prost = "0.12"
-serde_bytes = "0.11"
+# Use the `serde` feature of the `prost` crate.
+prost = { version = "0.12", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
-# The missing dependency for serde on prost `bytes` fields
-prost-serde-bytes = "0.2.1"
+serde_bytes = "0.11"
+serde_json = "1.0.120" # Added for `serde` compatibility
 
 # For validation attributes in build.rs
 validator = { version = "0.18", features = ["derive"] }
