@@ -3,7 +3,8 @@ syntax = "proto3";
 package uibc.ibc.v1;
 
 // Code generation options for consistency
-option go_package = "github.com/oloidama/UIBCP/proto/uibc/v1";
+// Corrected the go_package to match the proto package structure
+option go_package = "github.com/oloidama/UIBCP/proto/uibc/ibc/v1";
 option java_package = "com.oloridama.uibcp.ibc.v1";
 option java_multiple_files = true;
 option java_outer_classname = "Ics20Proto";
