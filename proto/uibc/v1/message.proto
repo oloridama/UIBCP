@@ -12,6 +12,7 @@ package uibc.v1;
 
 import "uibc/v1/common.proto";
 import "uibc/v1/proof.proto";
+import "uibc/ibc/v1/compatibility.proto";
 
 // Forward declaration for IBC compatibility
 // This will be defined in uibc/ibc/v1/compatibility.proto
