@@ -1,9 +1,0 @@
-// uibc.proto
-syntax = "proto3";
-
-//import "uibc/v1/common.proto";
-//import "uibc/v1/proof.proto";
-//import "uibc/v1/message.proto";
-import "uibc/ibc/v1/compatibility.proto";
-//import "uibc/ibc/v1/ics20.proto";
-//import "uibc/ibc/extensions/evm.proto";
