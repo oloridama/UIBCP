@@ -1,24 +1,24 @@
 // build.rs
-use std::io::Result;
+use std::io::{self, Write};
 use prost_build::Config;
 use std::env;
 use std::path::{Path, PathBuf};
 
-fn main() -> Result<()> {
+fn main() -> io::Result<()> {
     // Print the current working directory to help with debugging
     let current_dir = env::current_dir()?;
-    println!("cargo:warning=Current working directory: {:?}", current_dir);
+    writeln!(io::stderr(), "cargo:warning=Current working directory: {:?}", current_dir)?;
 
     // Tell Cargo to re-run this build script if any proto file changes
-    println!("cargo:rerun-if-changed=proto/");
+    writeln!(io::stderr(), "cargo:rerun-if-changed=proto/")?;
 
     // Get the output directory where the generated code should be written.
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    println!("cargo:warning=Output directory: {:?}", out_dir);
+    writeln!(io::stderr(), "cargo:warning=Output directory: {:?}", out_dir)?;
 
     // This is the full path of the file we expect to be generated
     let generated_file_path = out_dir.join("uibc.rs");
-    println!("cargo:warning=Expected generated file path: {:?}", generated_file_path);
+    writeln!(io::stderr(), "cargo:warning=Expected generated file path: {:?}", generated_file_path)?;
 
     let mut config = Config::new();
 
