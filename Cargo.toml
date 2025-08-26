@@ -1,3 +1,4 @@
+# File: Cargo.toml
 [package]
 name = "uibcp"
 version = "0.1.0"
@@ -20,6 +21,8 @@ anyhow = "1.0.83"
 prost = "0.12"
 serde_bytes = "0.11"
 serde = { version = "1.0.219", features = ["derive"] }
+# The missing dependency for serde on prost `bytes` fields
+prost-serde-bytes = "0.2.1"
 
 # For validation attributes in build.rs
 validator = { version = "0.18", features = ["derive"] }
