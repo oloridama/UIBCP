@@ -2,40 +2,30 @@ syntax = "proto3";
 
 package uibc.v1;
 
+import "uibc/v1/common.proto";
+
 // ====================
 // PROOF-RELATED ENUMS
 // ====================
 
 enum ProofType {
-  PROOF_TYPE_UNSPECIFIED = 0;
-  PROOF_TYPE_ICS23 = 1;
-  PROOF_TYPE_LIGHT_CLIENT = 2;
-  PROOF_TYPE_ZK = 3;
-  PROOF_TYPE_OPTIMISTIC = 4;
-  PROOF_TYPE_COMMITTEE = 5;
-  PROOF_TYPE_NONE = 6;
+  PROOF_TYPE_UNSPECIFIED = 0;
+  PROOF_TYPE_ICS23 = 1;
+  PROOF_TYPE_LIGHT_CLIENT = 2;
+  PROOF_TYPE_ZK = 3;
+  PROOF_TYPE_OPTIMISTIC = 4;
+  PROOF_TYPE_COMMITTEE = 5;
+  PROOF_TYPE_NONE = 6;
 }
 
 enum ErrorType {
-  ERROR_TYPE_UNSPECIFIED = 0;
-  ERROR_TYPE_TIMEOUT = 1;
-  ERROR_TYPE_INVALID_PROOF = 2;
-  ERROR_TYPE_INSUFFICIENT_FEE = 3;
-  ERROR_TYPE_CHAIN_UNREACHABLE = 4;
-  ERROR_TYPE_MESSAGE_EXPIRED = 5;
-  ERROR_TYPE_VALIDATION_FAILED = 6;
-}
-
-// ====================
-// BASIC FEE STRUCTURE
-// ====================
-
-// Fee message (needed by many other messages)
-message Fee {
-  string amount = 1;
-  string denom = 2;
-  string chain_id = 3;
-  uint32 decimals = 4;
+  ERROR_TYPE_UNSPECIFIED = 0;
+  ERROR_TYPE_TIMEOUT = 1;
+  ERROR_TYPE_INVALID_PROOF = 2;
+  ERROR_TYPE_INSUFFICIENT_FEE = 3;
+  ERROR_TYPE_CHAIN_UNREACHABLE = 4;
+  ERROR_TYPE_MESSAGE_EXPIRED = 5;
+  ERROR_TYPE_VALIDATION_FAILED = 6;
 }
 
 // ====================
@@ -43,47 +33,47 @@ message Fee {
 // ====================
 
 message ProofRequirement {
-  oneof requirement {
-    LightClientProof light_client = 1;
-    ZkProofRequirement zk_proof = 2;
-    OptimisticProof optimistic = 3;
-    CommitteeProof committee = 4;
-    NoProofRequired none = 5;
-  }
+  oneof requirement {
+    LightClientProof light_client = 1;
+    ZkProofRequirement zk_proof = 2;
+    OptimisticProof optimistic = 3;
+    CommitteeProof committee = 4;
+    NoProofRequired none = 5;
+  }
 }
 
 // Light client proof requirements
 message LightClientProof {
-  uint32 min_confirmations = 1;
-  uint64 max_age_seconds = 2;
-  string client_type = 3;               // "tendermint", "ethereum", etc.
+  uint32 min_confirmations = 1;
+  uint64 max_age_seconds = 2;
+  string client_type = 3;               // "tendermint", "ethereum", etc.
 }
 
 // ZK proof requirements with gas optimization
 message ZkProofRequirement {
-  string circuit_id = 1;
-  repeated bytes public_inputs = 2;
-  string proof_system = 3;              // "groth16", "plonk", "stark"
-  uint32 verification_gas_limit = 4;
+  string circuit_id = 1;
+  repeated bytes public_inputs = 2;
+  string proof_system = 3;              // "groth16", "plonk", "stark"
+  uint32 verification_gas_limit = 4;
 }
 
 // Optimistic proof requirements
 message OptimisticProof {
-  uint64 challenge_period_seconds = 1;
-  Fee required_bond = 2;
-  Fee challenger_reward = 3;
+  uint64 challenge_period_seconds = 1;
+  Fee required_bond = 2;
+  Fee challenger_reward = 3;
 }
 
 // Committee proof for federated chains
 message CommitteeProof {
-  uint32 threshold_percentage = 1;      // Required % of committee signatures
-  repeated bytes committee_members = 2;
-  uint64 signature_timeout = 3;
+  uint32 threshold_percentage = 1;      // Required % of committee signatures
+  repeated bytes committee_members = 2;
+  uint64 signature_timeout = 3;
 }
 
 // No proof required
 message NoProofRequired {
-  string reason = 1;
+  string reason = 1;
 }
 
 // ====================
@@ -92,65 +82,65 @@ message NoProofRequired {
 
 // Universal proof container
 message UniversalProof {
-  ProofMetadata metadata = 1;
-  
-  oneof proof {
-    MerkleProof merkle = 2;
-    ZkProof zk = 3;
-    OptimisticProofData optimistic = 4;
-    CommitteeSignatures committee = 5;
-  }
+  ProofMetadata metadata = 1;
+  
+  oneof proof {
+    MerkleProof merkle = 2;
+    ZkProof zk = 3;
+    OptimisticProofData optimistic = 4;
+    CommitteeSignatures committee = 5;
+  }
 }
 
 // Proof metadata for gas estimation
 message ProofMetadata {
-  uint64 proof_height = 1;
-  bytes block_hash = 2;
-  uint64 timestamp = 3;
-  uint32 verification_cost_estimate = 4;
+  uint64 proof_height = 1;
+  bytes block_hash = 2;
+  uint64 timestamp = 3;
+  uint32 verification_cost_estimate = 4;
 }
 
 // Merkle root commitment
 message MerkleRoot {
-  bytes hash = 1;
+  bytes hash = 1;
 }
 
 // Merkle inclusion proof
 message MerkleProof {
-  MerkleRoot root = 1;
-  bytes leaf_hash = 2;
-  repeated bytes siblings = 3;
-  repeated bool path_bits = 4;
+  MerkleRoot root = 1;
+  bytes leaf_hash = 2;
+  repeated bytes siblings = 3;
+  repeated bool path_bits = 4;
 }
 
 // ZK proof with economic metadata
 message ZkProof {
-  string circuit_id = 1;
-  bytes proof_data = 2;
-  repeated bytes public_inputs = 3;
-  uint64 proof_generation_cost = 4;
-  uint32 verification_gas_limit = 5;
-  string proof_system = 6;
+  string circuit_id = 1;
+  bytes proof_data = 2;
+  repeated bytes public_inputs = 3;
+  uint64 proof_generation_cost = 4;
+  uint32 verification_gas_limit = 5;
+  string proof_system = 6;
 }
 
 // Optimistic proof data
 message OptimisticProofData {
-  bytes claim = 1;
-  uint64 submitted_at = 2;
-  bytes submitter = 3;
-  bytes canonical_proof_hash = 4;
+  bytes claim = 1;
+  uint64 submitted_at = 2;
+  bytes submitter = 3;
+  bytes canonical_proof_hash = 4;
 }
 
 // Committee signatures for federated chains
 message CommitteeSignatures {
-  repeated Signature signatures = 1;
-  bytes validator_set_hash = 2;
-  uint64 total_voting_power = 3;
+  repeated Signature signatures = 1;
+  bytes validator_set_hash = 2;
+  uint64 total_voting_power = 3;
 }
 
 // Individual signature with voting power
 message Signature {
-  bytes signature = 1;
-  bytes public_key = 2;
-  uint64 validator_power = 3;
+  bytes signature = 1;
+  bytes public_key = 2;
+  uint64 validator_power = 3;
 }
