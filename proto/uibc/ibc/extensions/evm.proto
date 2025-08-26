@@ -6,7 +6,7 @@ package uibc.ibc.extensions;
 option go_package = "github.com/oloridama/UIBCP/proto/uibc/ibc/extensions";
 option java_package = "com.oloridama.uibcp.ibc.extensions";
 option java_multiple_files = true;
-option java_outer_classname = "Ics20Proto";
+option java_outer_classname = "EvmProto";
 option csharp_namespace = "Uibcp.Ibc.Extensions";
 
 
