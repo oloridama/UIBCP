@@ -1,12 +1,10 @@
 // build.rs
-use std::io::{self, Write};
+use std::io::Result;
 use prost_build::Config;
-use std::env;
-use std::path::{Path, PathBuf};
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
     // Tell Cargo to re-run this build script if any proto file changes
-    writeln!(io::stderr(), "cargo:rerun-if-changed=proto/")?;
+    println!("cargo:rerun-if-changed=proto/");
 
     let mut config = Config::new();
 
@@ -29,18 +27,10 @@ fn main() -> io::Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // We compile all the proto files by explicitly listing them to avoid
-    // any issues with the import chain.
-    let proto_files = &[
-        Path::new("uibc/v1/uibc.proto"),
-        Path::new("uibc/v1/common.proto"),
-        Path::new("uibc/v1/proof.proto"),
-        Path::new("uibc/v1/message.proto"),
-        Path::new("uibc/ibc/v1/compatibility.proto"),
-        Path::new("uibc/ibc/v1/ics20.proto"),
-        Path::new("uibc/ibc/extensions/evm.proto"),
-    ];
-    let include_dirs = &[Path::new("proto")];
+    // We compile the top-level proto file and use the `proto` directory
+    // as the include path, allowing `protoc` to resolve all imports.
+    let proto_files = &["uibc/v1/uibc.proto"];
+    let include_dirs = &["proto"];
 
     config.compile_protos(proto_files, include_dirs)?;
 
