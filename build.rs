@@ -34,6 +34,8 @@ fn main() -> Result<()> {
         "proto",
         "proto/uibc",
         "proto/uibc/ibc",
+        "proto/uibc/ibc/v1",
+        "proto/uibc/ibc/extensions",
     ];
 
     config.compile_protos(proto_files, include_dirs)?;
