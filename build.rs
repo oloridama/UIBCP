@@ -14,10 +14,10 @@ fn main() -> Result<()> {
     config.type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
     
     // Configure serialization for specific `bytes` fields
-    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"prost_serde_bytes\")]");
-    config.field_attribute("*.bytes", "#[serde(with = \"prost_serde_bytes\")]");
+    config.field_attribute("uibc.v1.StateCheckpoint.state_root", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("uibc.v1.UniversalMessage.message_hash", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("uibc.v1.ChainEndpoint.chain_id", "#[serde(with = \"serde_bytes\")]");
+    config.field_attribute("*.bytes", "#[serde(with = \"serde_bytes\")]");
 
     // Add necessary derives to specific messages
     config.message_attribute("uibc.v1.UniversalMessage", "#[derive(Clone, validator::Validate)]");
