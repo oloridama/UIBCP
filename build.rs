@@ -1,10 +1,24 @@
 // build.rs
-use std::io::Result;
+use std::io::{self, Write};
 use prost_build::Config;
+use std::env;
+use std::path::{Path, PathBuf};
 
-fn main() -> Result<()> {
+fn main() -> io::Result<()> {
+    // Print the current working directory to help with debugging
+    let current_dir = env::current_dir()?;
+    writeln!(io::stderr(), "cargo:warning=Current working directory: {:?}", current_dir)?;
+
     // Tell Cargo to re-run this build script if any proto file changes
-    println!("cargo:rerun-if-changed=proto/");
+    writeln!(io::stderr(), "cargo:rerun-if-changed=proto/")?;
+
+    // Get the output directory where the generated code should be written.
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    writeln!(io::stderr(), "cargo:warning=Output directory: {:?}", out_dir)?;
+
+    // This is the full path of the file we expect to be generated
+    let generated_file_path = out_dir.join("uibc.rs");
+    writeln!(io::stderr(), "cargo:warning=Expected generated file path: {:?}", generated_file_path)?;
 
     let mut config = Config::new();
 
@@ -27,18 +41,12 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // This is the crucial change. We are now explicitly listing every single proto file
-    // so the compiler processes them all directly, bypassing any import resolution issues.
+    // We compile all the proto files by pointing to a single top-level file
+    // that imports the others. This ensures a single output file.
     let proto_files = &[
-        "uibc/v1/common.proto",
-        "uibc/v1/message.proto",
-        "uibc/v1/proof.proto",
-        "uibc/v1/uibc.proto",
-        "uibc/ibc/extensions/evm.proto",
-        "uibc/ibc/v1/compatibility.proto",
-        "uibc/ibc/v1/ics20.proto",
+        Path::new("uibc/v1/uibc.proto"),
     ];
-    let include_dirs = &["proto"];
+    let include_dirs = &[Path::new("proto")];
 
     config.compile_protos(proto_files, include_dirs)?;
 
