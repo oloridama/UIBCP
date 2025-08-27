@@ -3,6 +3,7 @@ syntax = "proto3";
 package uibc.ibc.v1;
 
 // This import provides access to the shared 'Height' and other common messages.
+// The "uibc/v1/common.proto" file contains the definition for the 'Height' message.
 import "uibc/v1/common.proto";
 
 // Code generation options
@@ -23,17 +24,18 @@ message IbcCompatibilityData {
 
   // Timeout Handling - using imported Height definition
   oneof timeout {
-    Height timeout_height = 10;
+    // We must use the fully qualified name 'uibc.v1.Height' to specify the correct package.
+    uibc.v1.Height timeout_height = 10;
     uint64 timeout_timestamp = 11;
   }
 
   // ICS-20 Token Transfer Extensions
   FungibleTokenPacket token_data = 12;
-  
+
   // Other IBC application data
   bytes ics27_data = 13;
   bytes custom_app_data = 14;
-  
+
   // Connection and client information
   ConnectionInfo connection_info = 15;
   ClientInfo client_info = 16;
@@ -78,7 +80,8 @@ enum ConnectionState {
 message ClientInfo {
   string client_id = 1;
   string client_type = 2;
-  Height latest_height = 3;
+  // We must use the fully qualified name 'uibc.v1.Height' here as well.
+  uibc.v1.Height latest_height = 3;
   bytes consensus_state = 4;
   bytes client_state = 5;
   bool frozen = 6;
