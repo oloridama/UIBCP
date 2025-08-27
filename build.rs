@@ -27,19 +27,18 @@ fn main() -> Result<()> {
     config.field_attribute("uibc.v1.Fee.amount", "#[validate(regex = \"^[0-9]+$\")]");
     config.field_attribute("uibc.v1.TokenTransfer.amount", "#[validate(regex = \"^[0-9]+$\")]");
 
-    // We compile all the proto files by pointing to a single top-level file
-    // that imports the others. This ensures a single output file.
+    // We will now explicitly compile every proto file to avoid any path resolution issues.
+    // This is the most reliable way to handle complex nested imports.
     let proto_files = &[
         "uibc/v1/uibc.proto",
+        "uibc/v1/common.proto",
+        "uibc/v1/proof.proto",
+        "uibc/v1/message.proto",
+        "uibc/ibc/v1/compatibility.proto",
+        "uibc/ibc/v1/ics20.proto",
+        "uibc/ibc/extensions/evm.proto",
     ];
     let include_dirs = &["proto"];
-
-    // --- DEBUGGING STEP ---
-    // This will print the exact arguments passed to the Protobuf compiler.
-    println!("cargo:warning=DEBUGGING PROTOC COMPILE ARGS:");
-    println!("cargo:warning=Proto files: {:?}", proto_files);
-    println!("cargo:warning=Include directories: {:?}", include_dirs);
-    // ----------------------
 
     config.compile_protos(proto_files, include_dirs)?;
 
