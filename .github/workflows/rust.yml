@@ -26,7 +26,7 @@ jobs:
           --proto_path=proto \
           --go_out=. \
           --java_out=. \
-          proto/uibc/ibc/v1/message.proto
+          proto/uibc/v1/message.proto
 
       - name: Build project
         run: cargo build --release
