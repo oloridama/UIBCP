@@ -18,6 +18,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
       
+      # This step explicitly adds the protoc binary to the PATH
+      - name: Add protoc to PATH
+        run: echo "/usr/bin" >> $GITHUB_PATH
+
       # This step explicitly orders the proto files for prost-build
       - name: Build project
         env:
