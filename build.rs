@@ -30,7 +30,11 @@ fn main() -> Result<()> {
     // We compile the top-level proto file and use the `proto` directory
     // as the include path, allowing `protoc` to resolve all imports.
     let proto_files = &["uibc/v1/uibc.proto"];
-    let include_dirs = &["proto"];
+    let include_dirs = &[
+        "proto",
+        "proto/uibc",
+        "proto/uibc/ibc",
+    ];
 
     config.compile_protos(proto_files, include_dirs)?;
 
