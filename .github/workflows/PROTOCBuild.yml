@@ -1,0 +1,40 @@
+name: Export Poseidon Constants
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  export-constants:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.79.0
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      
+      # This step explicitly orders the proto files for prost-build
+      - name: Build project
+        env:
+          PROTOC: |
+            uibc/ibc/v1/compatibility.proto
+            uibc/v1/common.proto
+            uibc/ibc/v1/ics20.proto
+            uibc/ibc/extensions/evm.proto
+            uibc/v1/proof.proto
+            uibc/v1/message.proto
+            uibc/v1/uibc.proto
+        run: cargo build --release
+      
+      - name: Run export script
+        run: cargo run --release --bin export_poseidon > poseidon_constants.txt
+      - name: Upload constants
+        uses: actions/upload-artifact@v4
+        with:
+          name: poseidon-constants
+          path: poseidon_constants.txt
