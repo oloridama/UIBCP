@@ -1,31 +1,37 @@
 // scripts/export_poseidon.rs
-use neptune::poseidon::parameters::generate_parameters;
+use winter_crypto::hashers::poseidon::Poseidon;
 use winter_math::fields::f252::BaseElement;
+use winter_math::{FieldElement, StarkField};
 
+// These constants are defined in your circuit.rs, but we replicate them here
+// to ensure this binary has the correct configuration for the Poseidon hash function.
+pub const POSEIDON_WIDTH: usize = 3;
+pub const POSEIDON_FULL_ROUNDS: usize = 8;
+pub const POSEIDON_PARTIAL_ROUNDS: usize = 56;
+
+// The main function of the binary. When run, it will compute and print
+// the Poseidon round constants to stdout.
 fn main() {
-    let params = generate_parameters::<BaseElement>(3, 8, 56);
-    println!("// Round constants");
-    println!("uint256[192] constant RC = [");
-    for (i, rc) in params.round_constants.iter().enumerate() {
-        print!("    0x{:x}", rc);
-        if i < params.round_constants.len() - 1 {
-            print!(",");
-        }
-        if i % 3 == 2 {
-            println!();
-        }
+    println!("Generating Poseidon constants...");
+    
+    // Create a new Poseidon hasher instance
+    let poseidon = Poseidon::new(POSEIDON_WIDTH, POSEIDON_FULL_ROUNDS, POSEIDON_PARTIAL_ROUNDS);
+
+    // The Poseidon `Poseidon::new()` function initializes the constants internally.
+    // We can access them directly from the hasher object for printing.
+    
+    // Print the Poseidon round constants
+    println!("--- Round Constants ---");
+    for (i, constant) in poseidon.constants().iter().enumerate() {
+        // Convert the BaseElement constant to a byte array and then to a hexadecimal string
+        let mut bytes = [0u8; 32];
+        constant.to_bytes(&mut bytes);
+        println!("Round {}: 0x{}", i, hex::encode(bytes));
     }
-    println!("];");
-    println!("// MDS matrix");
-    println!("uint256[9] constant MDS = [");
-    for i in 0..3 {
-        for j in 0..3 {
-            print!("    0x{:x}", params.mds_matrix.get(i, j));
-            if i * 3 + j < 8 {
-                print!(",");
-            }
-        }
-        println!();
-    }
-    println!("];");
+    
+    // Also print the S-box constant, which is a key part of the Poseidon hash function
+    println!("\n--- S-box Constant ---");
+    println!("{}", poseidon.sbox_constant());
+
+    println!("\nPoseidon constants export complete.");
 }
