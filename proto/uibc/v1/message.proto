@@ -6,6 +6,7 @@
 // payloads, economic parameters, and relayer coordination structures.
 // It imports both common.proto and proof.proto to access shared types.
 
+// uibc/v1/message.proto
 syntax = "proto3";
 
 package uibc.v1;
