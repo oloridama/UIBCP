@@ -40,8 +40,6 @@ fn main() -> Result<()> {
     ];
     let include_dirs = &["proto"];
 
-    config.emit_cargo_warnings(true);
-
     // This is the key debugging step. It will print the exact command to the console.
     eprintln!("DEBUG: Compiling with the following proto files and include directories:");
     eprintln!("Files: {:?}", proto_files);
