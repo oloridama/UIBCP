@@ -1,0 +1,48 @@
+# .github/workflows/rust-build-debug.yml
+
+name: Rust Build Debug
+
+# Controls when the workflow will run
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # This job will build your Rust project with verbose logging
+  debug-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks out your repository under $GITHUB_WORKSPACE, so the job can access it
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Sets up the Rust toolchain
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Installs the `protoc` compiler
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      
+      # The key debugging step: runs a verbose build and captures the output
+      - name: Run verbose build
+        id: verbose-build
+        # We redirect the stderr output (where the `protoc` command is printed)
+        # to a file, so we can upload it as an artifact.
+        run: cargo build -vv 2> build_log.txt || true
+
+      # Uploads the log file as an artifact
+      - name: Upload debug log
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-log
+          path: build_log.txt
