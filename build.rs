@@ -44,6 +44,8 @@ fn main() -> Result<()> {
     eprintln!("DEBUG: Compiling with the following proto files and include directories:");
     eprintln!("Files: {:?}", proto_files);
     eprintln!("Includes: {:?}", include_dirs);
+
+    config.out_dir(std::env::var("OUT_DIR").unwrap());
     
     config.compile_protos(proto_files, include_dirs)?;
 

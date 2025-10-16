@@ -1,4 +1,3 @@
-name: Export Poseidon Constants
 on:
   push:
     branches:
