@@ -24,6 +24,13 @@ mod uibc {
 }
 pub mod adapters;
 pub mod zk;
+pub mod proto {
+    pub mod uibc {
+        pub mod v1 {
+            include!(concat!(env!("OUT_DIR"), "/uibc.rs"));
+        }
+    }
+}
 
 // The core function for ZK proof generation.
 // This function is dedicated solely to validating the message and creating the STARK proof.
