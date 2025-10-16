@@ -66,5 +66,7 @@ fn main() -> Result<()> {
         "#,
     )?;
 
+    println!("cargo:warning=Proto files compiled. OUT_DIR = {:?}", std::env::var("OUT_DIR").unwrap());
+
     Ok(())
 }
