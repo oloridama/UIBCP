@@ -1,8 +1,9 @@
-name: Export Poseidon Constants
 on:
   push:
     branches:
       - main
+      - "fix/**"
+      - "feature/**"
   workflow_dispatch:
 
 jobs:
