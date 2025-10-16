@@ -47,5 +47,24 @@ fn main() -> Result<()> {
     
     config.compile_protos(proto_files, include_dirs)?;
 
+        // Explicitly write a top-level mod file combining all generated modules
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+    std::fs::write(
+        format!("{}/uibc.rs", out_dir),
+        r#"
+            pub mod v1 {
+                include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
+            }
+            pub mod ibc {
+                pub mod v1 {
+                    include!(concat!(env!("OUT_DIR"), "/uibc.ibc.v1.rs"));
+                }
+                pub mod extensions {
+                    include!(concat!(env!("OUT_DIR"), "/uibc.ibc.extensions.rs"));
+                }
+            }
+        "#,
+    )?;
+
     Ok(())
 }
