@@ -20,8 +20,8 @@ use crate::zk::circuit::{Ics23StarkProver, PublicInputs, Ics23Air,
 // Local module declarations
 // This includes the generated code from your build.rs script.
 //mod uibc {
-    include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
-}
+   // include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
+//}
 pub mod adapters;
 pub mod zk;
 pub mod proto {
