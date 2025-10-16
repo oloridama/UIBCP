@@ -98,7 +98,7 @@ message UniversalMessage {
   // IBC Compatibility Data (replaces extension approach)
   // Best Practice: Use regular fields instead of extensions in proto3
   // This field is populated by IBC-compatible chains for routing context
-  IbcCompatibilityData ibc_data = 40;
+  uibc.ibc.v1.IbcCompatibilityData ibc_data = 40;
 }
 
 // ====================
