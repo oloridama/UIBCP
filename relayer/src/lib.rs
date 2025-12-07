@@ -27,7 +27,7 @@ pub mod proto {
         }
         pub mod ibc {
             pub mod v1 {
-                include!(concat!(env!("OUT_DIR"), "/ibc.v1.rs"));
+                include!(concat!(env!("OUT_DIR"), "/uibc.ibc.v1.compatibility.rs"));
             }
         }
     }
