@@ -19,17 +19,11 @@ pub mod zk;
 
 // ----------------------------
 // Generated Protobuf modules
+// (Single entry point: OUT_DIR/uibc.rs)
 // ----------------------------
 pub mod proto {
     pub mod uibc {
-        pub mod v1 {
-            include!(concat!(env!("OUT_DIR"), "/uibc.v1.rs"));
-        }
-        pub mod ibc {
-            pub mod v1 {
-                include!(concat!(env!("OUT_DIR"), "/uibc.ibc.v1.compatibility.rs"));
-            }
-        }
+        include!(concat!(env!("OUT_DIR"), "/uibc.rs"));
     }
 }
 
@@ -37,7 +31,7 @@ pub mod proto {
 pub use proto::uibc as uibc;
 
 // ----------------------------
-// Imports for protobuf types
+// Imports for protobuf message types
 // ----------------------------
 use crate::proto::uibc::v1::{
     UniversalMessage,
@@ -46,6 +40,7 @@ use crate::proto::uibc::v1::{
 };
 
 use crate::adapters::chain_adapter::InclusionProof;
+
 use crate::zk::circuit::{
     Ics23StarkProver,
     TRACE_WIDTH,
@@ -68,7 +63,7 @@ pub fn process_message(
     root: [winter_math::fields::f256::BaseElement; 4],
 ) -> Result<Vec<u8>> {
 
-    // 1. Validate the message
+    // 1 — Validate message
     if !message.is_valid() {
         return Err(anyhow!("Message validation failed"));
     }
@@ -83,7 +78,7 @@ pub fn process_message(
         return Err(anyhow!("Invalid proof length"));
     }
 
-    // Extract zk proof requirement
+    // Extract ZKP requirement
     let zk_req = match &message.proof_requirement {
         Some(Requirement::ZkProof(req)) => Some(req.clone()),
         _ => None,
@@ -93,19 +88,19 @@ pub fn process_message(
         return Err(anyhow!("Unsupported or empty ZK proof payload"));
     }
 
-    // 2. STARK Proof generation
+    // 2 — STARK proof generation
     let options = ProofOptions::new(
-        4,
-        256,
-        16,
+        4,    // number of queries
+        256,  // blowup factor
+        16,   // grinding factor
         FieldExtension::Quadratic,
-        8,
-        2048,
+        8,    // FRI folding factor
+        2048, // max proof size
     );
 
     let prover = Ics23StarkProver::new(options);
 
-    // Convert protobuf -> InclusionProof
+    // Map protobuf → InclusionProof
     let inclusion = InclusionProof {
         path: proof.key,
         value: proof.value,
@@ -137,7 +132,7 @@ pub fn handle_message_and_submit(
         println!("Total fee: {} {}", fees.total_fee.amount, fees.total_fee.denom);
     }
 
-    // TODO: submit proof to contract
+    // TODO: submit ZK proof + message to a relayer contract
     Ok(())
 }
 
@@ -156,6 +151,7 @@ mod tests {
         token_transfer::TokenTransfer,
         proof_requirement::Requirement,
     };
+
     use crate::proto::uibc::ibc::v1::{
         IbcCompatibilityData,
         FungibleTokenPacket,
