@@ -9,7 +9,6 @@ use prost::bytes::Bytes;
 // Winterfell imports
 use winter_air::{AirContext, TraceInfo, ProofOptions, FieldExtension};
 use winter_math::{FieldElement, StarkField};
-use winter_crypto::hashers::Poseidon;
 use winterfell::StarkProof;
 
 // ----------------------------
@@ -34,8 +33,7 @@ pub mod proto {
     }
 }
 
-// Optional compatibility layer (keeps old paths working)
-// If you don't want this, remove it.
+// Optional alias for convenience
 pub use proto::uibc as uibc;
 
 // ----------------------------
@@ -43,19 +41,13 @@ pub use proto::uibc as uibc;
 // ----------------------------
 use crate::proto::uibc::v1::{
     UniversalMessage,
-    ZkProof,
     Ics23Proof,
     proof_requirement::Requirement,
 };
 
-// ----------------------------
-// Local application imports
-// ----------------------------
 use crate::adapters::chain_adapter::InclusionProof;
 use crate::zk::circuit::{
     Ics23StarkProver,
-    PublicInputs,
-    Ics23Air,
     TRACE_WIDTH,
     TOTAL_STEPS,
     POSEIDON_WIDTH,
@@ -66,24 +58,21 @@ use crate::zk::circuit::{
 };
 
 
-
 // ===========================================================================
 // CORE LOGIC
 // ===========================================================================
 
-/// Validates a UIBC message and generates a STARK proof.
 pub fn process_message(
     message: UniversalMessage,
     proof: Ics23Proof,
     root: [winter_math::fields::f256::BaseElement; 4],
 ) -> Result<Vec<u8>> {
 
-    // --------------------
-    // 1. Message validation
-    ---------------------
+    // 1. Validate the message
     if !message.is_valid() {
         return Err(anyhow!("Message validation failed"));
     }
+
     if message.message_id.is_empty() {
         return Err(anyhow!("Message has no message_id"));
     }
@@ -99,41 +88,38 @@ pub fn process_message(
         Some(Requirement::ZkProof(req)) => Some(req.clone()),
         _ => None,
     };
+
     if zk_req.is_none() {
         return Err(anyhow!("Unsupported or empty ZK proof payload"));
     }
 
-    // --------------------
-    // 2. Generate STARK proof
-    --------------------
+    // 2. STARK Proof generation
     let options = ProofOptions::new(
-        4,                    // blowup factor
-        256,                  // grinding factor
-        16,                   // fri folding factor
+        4,
+        256,
+        16,
         FieldExtension::Quadratic,
-        8,                    // fri max remainder
-        2048,                 // ce blowup
+        8,
+        2048,
     );
 
     let prover = Ics23StarkProver::new(options);
 
-    // Convert the protobuf proof into InclusionProof
+    // Convert protobuf -> InclusionProof
     let inclusion = InclusionProof {
         path: proof.key,
         value: proof.value,
         proof_data: proof.proof_data,
     };
 
-    // Generate the proof
     let zk_proof = prover.generate_proof(&message, &inclusion)?;
 
     Ok(zk_proof.proof_data)
 }
 
 
-
 // ===========================================================================
-// RELAYER FLOW
+// RELAYER LOGIC
 // ===========================================================================
 
 pub fn handle_message_and_submit(
@@ -144,25 +130,20 @@ pub fn handle_message_and_submit(
 
     let zkp = process_message(message.clone(), proof.clone(), root)?;
 
-    println!("Processing UIBCP message: {:?}", message.message_id);
-    let canonical = message.canonical_encode();
-    println!("Canonical bytes ({}): {:?}", canonical.len(), canonical);
+    println!("Processing UIBCP message with ID {:?}", message.message_id);
+    println!("Canonical bytes = {:?}", message.canonical_encode());
 
     if let Some(fees) = &message.fees {
         println!("Total fee: {} {}", fees.total_fee.amount, fees.total_fee.denom);
     }
 
-    // TODO:
-    // - Submit ZK proof on-chain
-    // - Handle relayer fees
-    // - Emit events
+    // TODO: submit proof to contract
     Ok(())
 }
 
 
-
 // ===========================================================================
-// TESTS
+// UNIT TESTS
 // ===========================================================================
 
 #[cfg(test)]
